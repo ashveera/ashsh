@@ -3,58 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Article Generator</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            line-height: 1.6;
-        }
-
-        h1 {
-            text-align: center;
-        }
-
-        form {
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background: #f9f9f9;
-        }
-
-        label {
-            font-weight: bold;
-        }
-
-        input, select, textarea, button {
-            width: 100%;
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-
-        button {
-            background-color: #007BFF;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        #loading {
-            text-align: center;
-            margin: 20px;
-            display: none;
-            font-weight: bold;
-        }
-    </style>
+    <title>ChatGPT and DALL·E to WordPress</title>
     <script>
         async function generateContent(event) {
             event.preventDefault();
@@ -62,26 +11,29 @@
             const loadingIndicator = document.getElementById("loading");
             loadingIndicator.style.display = "block";
 
-            try {
-                const keywords = document.getElementById("keywords").value;
-                const contentType = document.getElementById("content_type").value;
-                const tone = document.getElementById("tone").value;
-                const audience = document.getElementById("audience").value;
-                const wordCount = document.getElementById("word_count").value;
-                const structure = document.getElementById("structure").value;
-                const seoKeywords = document.getElementById("seo_keywords").value;
-                const cta = document.getElementById("cta").value;
-                const includeImages = document.getElementById("images").value === "true";
-                const format = document.getElementById("format").value;
-                const language = document.getElementById("language").value;
+            const keywords = document.getElementById("keywords").value;
+            const contentType = document.getElementById("content_type").value;
+            const tone = document.getElementById("tone").value;
+            const audience = document.getElementById("audience").value;
+            const wordCount = document.getElementById("word_count").value;
+            const structure = document.getElementById("structure").value;
+            const seoKeywords = document.getElementById("seo_keywords").value;
+            const cta = document.getElementById("cta").value;
+            const includeImages = document.getElementById("images").value === "true";
+            const format = document.getElementById("format").value;
+            const language = document.getElementById("language").value;
 
-                const apiKey = "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"; // Replace with your OpenAI API key            const wpApiUrl = "https://yourwebsite.com/wp-json/wp/v2"; // Replace with your WordPress base API URL
+            const apiKey = "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"; // Replace with your OpenAI API key            const wpApiUrl = "https://yourwebsite.com/wp-json/wp/v2"; // Replace with your WordPress base API URL
             const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2"; // Replace with your WordPress base API URL
             const wpApiToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ZpdG5lc3Nib2R5YnVpbGRpbmd2b2x0LmNvbSIsImlhdCI6MTczMjQ0NTczNiwibmJmIjoxNzMyNDQ1NzM2LCJleHAiOjE3MzMwNTA1MzYsImRhdGEiOnsidXNlciI6eyJpZCI6IjEifX19.iw96IxQiXSnBXZNWk_nFhnVMrgVRKQfXsUooS_DRLNo";; // Replace with your WordPress JWT token
-//const proxyUrl = "http://localhost:3000/proxy-image"; // Proxy server URL for handling CORS
+const proxyUrl = "http://localhost:3000/proxy-image"; // Proxy server URL for handling CORS
 
+            try {
         
-                // Generate content using ChatGPT
+
+               //; document.getElementById("api-usage").textContent = apiUsage;
+
+                // Step 2: Generate content
                 const chatGPTPrompt = `
                     Generate a ${tone} ${contentType} targeted at ${audience}.
                     Keywords: ${keywords}.
@@ -116,53 +68,62 @@
                 const chatGPTData = await chatGPTResponse.json();
                 let generatedContent = chatGPTData.choices[0].message.content;
 
-                // Process content with optional images
-                let contentWithImages = generatedContent;
+                // Step 3: Generate images for paragraphs and featured image
+                let contentWithImages = "";
                 let featuredImageId = null;
 
                 if (includeImages) {
-                    const imagePrompt = `Generate an image related to: ${keywords}`;
-                    const dalleResponse = await fetch("https://api.openai.com/v1/images/generations", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${apiKey}`
-                        },
-                        body: JSON.stringify({
-                            prompt: imagePrompt,
-                            n: 1,
-                            size: "1024x1024"
-                        })
-                    });
+                    const paragraphs = generatedContent.split("\n").filter(p => p.trim() !== "");
 
-                    if (dalleResponse.ok) {
-                        const dalleData = await dalleResponse.json();
-                        const imageUrl = dalleData.data[0].url;
+                    for (const paragraph of paragraphs) {
+                        contentWithImages += `<p>${paragraph}</p>`;
 
-                        // Upload image to WordPress
-                        const imageResponse = await fetch(imageUrl);
-                        const imageBlob = await imageResponse.blob();
-
-                        const formData = new FormData();
-                        formData.append("file", imageBlob, "featured-image.jpg");
-
-                        const mediaResponse = await fetch(`${wpApiUrl}/media`, {
+                        const dallePrompt = `An image that visually represents: ${paragraph}`;
+                        const dalleResponse = await fetch("https://api.openai.com/v1/images/generations", {
                             method: "POST",
                             headers: {
-                                Authorization: `Bearer ${wpApiToken}`
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${apiKey}`
                             },
-                            body: formData
+                            body: JSON.stringify({
+                                prompt: dallePrompt,
+                                n: 1,
+                                size: "1024x1024"
+                            })
                         });
 
-                        if (mediaResponse.ok) {
-                            const mediaData = await mediaResponse.json();
-                            featuredImageId = mediaData.id;
-                            contentWithImages += `<img src="${mediaData.source_url}" alt="${keywords}" />`;
+                        if (dalleResponse.ok) {
+                            const dalleData = await dalleResponse.json();
+                            const dalleImageUrl = dalleData.data[0].url;
+
+                            const imageResponse = await fetch(`${proxyUrl}?url=${encodeURIComponent(dalleImageUrl)}`);
+                            const imageBlob = await imageResponse.blob();
+
+                            const formData = new FormData();
+                            formData.append("file", imageBlob, "generated-image.jpg");
+
+                            const mediaResponse = await fetch(`${wpApiUrl}/media`, {
+                                method: "POST",
+                                headers: {
+                                    Authorization: `Bearer ${wpApiToken}`
+                                },
+                                body: formData
+                            });
+
+                            if (mediaResponse.ok) {
+                                const mediaData = await mediaResponse.json();
+                                contentWithImages += `<img src="${mediaData.source_url}" alt="${keywords}" />`;
+
+                                // Set the first image as featured
+                                if (!featuredImageId) {
+                                    featuredImageId = mediaData.id;
+                                }
+                            }
                         }
                     }
                 }
 
-                // Publish content to WordPress
+                // Step 4: Create WordPress post
                 const wpPostResponse = await fetch(`${wpApiUrl}/posts`, {
                     method: "POST",
                     headers: {
@@ -171,7 +132,7 @@
                     },
                     body: JSON.stringify({
                         title: `Generated Content - ${keywords}`,
-                        content: contentWithImages,
+                        content: contentWithImages || generatedContent,
                         status: "publish",
                         featured_media: featuredImageId
                     })
@@ -193,29 +154,34 @@
     </script>
 </head>
 <body>
-    <h1>Bulk Article Generator</h1>
+    <h1>ChatGPT and DALL·E Content Generator & Publisher</h1>
     <form id="contentForm" onsubmit="generateContent(event)">
         <label for="keywords">Keywords:</label>
         <input type="text" id="keywords" name="keywords" required>
+        <br><br>
 
         <label for="content_type">Content Type:</label>
         <select id="content_type" name="content_type" required>
             <option value="blog_post">Blog Post</option>
             <option value="product_review">Product Review</option>
         </select>
+        <br><br>
 
         <label for="tone">Tone:</label>
         <select id="tone" name="tone" required>
             <option value="formal">Formal</option>
             <option value="casual">Casual</option>
         </select>
+        <br><br>
 
         <label for="audience">Target Audience:</label>
         <select id="audience" name="audience">
             <option value="general">General Audience</option>
             <option value="fitness_enthusiasts">Fitness Enthusiasts</option>
             <option value="tech_savvy">Tech-Savvy Individuals</option>
+            <option value="beginners">Beginners</option>
         </select>
+        <br><br>
 
         <label for="word_count">Word Count:</label>
         <select id="word_count" name="word_count" required>
@@ -223,15 +189,18 @@
             <option value="1000">1000 Words</option>
             <option value="2000">2000+ Words</option>
         </select>
+        <br><br>
 
         <label for="structure">Structure:</label>
         <select id="structure" name="structure" required>
             <option value="intro_main_conclusion">Introduction → Main Points → Conclusion</option>
             <option value="bullet_points">Bullet Points</option>
         </select>
+        <br><br>
 
         <label for="seo_keywords">SEO Keywords:</label>
         <input type="text" id="seo_keywords" name="seo_keywords">
+        <br><br>
 
         <label for="cta">Call-to-Action:</label>
         <select id="cta" name="cta">
@@ -239,12 +208,14 @@
             <option value="click_here_buy">Click Here to Buy</option>
             <option value="learn_more">Learn More</option>
         </select>
+        <br><br>
 
         <label for="images">Include Images:</label>
         <select id="images" name="images">
             <option value="true">Yes</option>
             <option value="false">No</option>
         </select>
+        <br><br>
 
         <label for="format">Content Format:</label>
         <select id="format" name="format">
@@ -252,6 +223,7 @@
             <option value="html">HTML</option>
             <option value="plain_text">Plain Text</option>
         </select>
+        <br><br>
 
         <label for="language">Language:</label>
         <select id="language" name="language">
@@ -259,9 +231,11 @@
             <option value="spanish">Spanish</option>
             <option value="french">French</option>
         </select>
+        <br><br>
 
         <button type="submit">Generate and Publish</button>
     </form>
-    <div id="loading">Processing... Please wait!</div>
+
+    <div id="loading" style="display: none;">Processing... Please wait!</div>
 </body>
 </html>
