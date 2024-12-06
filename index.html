@@ -76,7 +76,10 @@
                 const format = document.getElementById("format").value;
                 const language = document.getElementById("language").value;
 
+                // Your OpenAI API key
                 const apiKey = "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";
+
+                // Your WordPress API details
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2";
                 const wpApiToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ZpdG5lc3Nib2R5YnVpbGRpbmd2b2x0LmNvbSIsImlhdCI6MTczMjQ0NTczNiwibmJmIjoxNzMyNDQ1NzM2LCJleHAiOjE3MzMwNTA1MzYsImRhdGEiOnsidXNlciI6eyJpZCI6IjEifX19.iw96IxQiXSnBXZNWk_nFhnVMrgVRKQfXsUooS_DRLNo";
 
@@ -110,8 +113,6 @@
                 });
 
                 if (!chatGPTResponse.ok) {
-                    const errorDetails = await chatGPTResponse.text();
-                    console.error("OpenAI API Error:", errorDetails);
                     throw new Error(`ChatGPT API Error: ${chatGPTResponse.statusText}`);
                 }
 
@@ -133,8 +134,6 @@
                 });
 
                 if (!wpPostResponse.ok) {
-                    const errorDetails = await wpPostResponse.text();
-                    console.error("WordPress API Error:", errorDetails);
                     throw new Error(`WordPress Post Error: ${wpPostResponse.statusText}`);
                 }
 
