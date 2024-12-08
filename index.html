@@ -40,8 +40,8 @@
 
             // ChatGPT API Configuration
             const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
-            const chatGPTApiKey ="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";
-            const chatGPTRequestBody = {
+            const chatGPTApiKey = process.env.OPENAI_API_KEY;
+			const chatGPTRequestBody = {
                 model: "gpt-3.5-turbo",
                 messages: [
                     { role: "system", content: "You are a helpful assistant." },
@@ -73,8 +73,7 @@
 
                 // WordPress API Configuration
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-                const wpApiToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ZpdG5lc3Nib2R5YnVpbGRpbmd2b2x0LmNvbSIsImlhdCI6MTczMjQ0NTczNiwibmJmIjoxNzMyNDQ1NzM2LCJleHAiOjE3MzMwNTA1MzYsImRhdGEiOnsidXNlciI6eyJpZCI6IjEifX19.iw96IxQiXSnBXZNWk_nFhnVMrgVRKQfXsUooS_DRLNo"; // Replace with your WordPress JWT token
-
+                const wpApiToken = process.env.WORDPRESS_JWT_TOKEN;
                 const wpRequestBody = {
                     title: `Generated Content - ${keywords}`,
                     content: generatedContent,
