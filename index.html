@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatGPT to WordPress</title>
+    <title>ChatGPT Content Generator & WordPress Publisher</title>
+    
+    <!-- Link to favicon -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
     <script>
         async function generateContent(event) {
             event.preventDefault();
 
-            // Collect inputs
+            // Collect inputs from form fields
             const keywords = document.getElementById("keywords").value;
             const contentType = document.getElementById("content_type").value;
             const tone = document.getElementById("tone").value;
@@ -23,21 +27,20 @@
 
             // Prepare the prompt for ChatGPT
             const prompt = `
-                Generate a ${tone} ${contentType} article targeted at ${audience}.
+                Generate a ${tone} ${contentType} targeted at ${audience}.
                 Keywords: ${keywords}.
                 SEO Keywords: ${seoKeywords}.
                 Word Count: ${wordCount}.
                 Structure: ${structure}.
-                Include Call-to-Action: ${cta}.
+                Call-to-Action: ${cta}.
                 Format: ${format}.
                 Language: ${language}.
                 Include Images: ${includeImages ? "Yes" : "No"}.
             `;
 
-            // ChatGPT API details
+            // ChatGPT API Configuration
             const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
-            const chatGPTApiKey ="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"
-
+            const chatGPTApiKey = "YOUR_CHATGPT_API_KEY"; // Replace with your OpenAI API key
 
             const chatGPTRequestBody = {
                 model: "gpt-3.5-turbo",
@@ -69,15 +72,15 @@
                 // Display the generated content
                 document.getElementById("result").textContent = generatedContent;
 
-                // WordPress API details
+                // WordPress API Configuration
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-                const wpApiToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ZpdG5lc3Nib2R5YnVpbGRpbmd2b2x0LmNvbSIsImlhdCI6MTczMjQ0NTczNiwibmJmIjoxNzMyNDQ1NzM2LCJleHAiOjE3MzMwNTA1MzYsImRhdGEiOnsidXNlciI6eyJpZCI6IjEifX19.iw96IxQiXSnBXZNWk_nFhnVMrgVRKQfXsUooS_DRLNo"; // Replace with your WordPress JWT token
+                const wpApiToken = "YOUR_WORDPRESS_JWT_TOKEN"; // Replace with your WordPress JWT token
 
-               const wpRequestBody = {
-    title: `Generated Content - ${keywords}`,
-    content: generatedContent,
-    status: "publish" // Use 'draft' if you want to save without publishing
-};
+                const wpRequestBody = {
+                    title: `Generated Content - ${keywords}`,
+                    content: generatedContent,
+                    status: "publish" // Change to 'draft' if you want to save without publishing
+                };
 
                 // Post to WordPress
                 const wpResponse = await fetch(wpApiUrl, {
@@ -207,7 +210,7 @@
     </form>
 
     <!-- Result Section -->
-    <h2>Generated Content:</h2>
+    <h2>Generated Content v15:</h2>
     <pre id="result"></pre>
 </body>
 </html>
