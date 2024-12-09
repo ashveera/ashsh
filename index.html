@@ -40,7 +40,7 @@
 
             // ChatGPT API Configuration
             const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
-            const chatGPTApiKey = process.env.OPENAI_API_KEY;
+            const chatGPTApiKey = window.env.OPENAI_API_KEY;
 			console.log('API URL:', chatGPTApiKey);
 
 			const chatGPTRequestBody = {
@@ -75,7 +75,7 @@
 
                 // WordPress API Configuration
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-                const wpApiToken = process.env.WORDPRESS_JWT_TOKEN;
+                const wpApiToken = window.env.OPENAI_API_KEY;
 							console.log('API URL:', wpApiToken);
 
                 const wpRequestBody = {
