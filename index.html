@@ -8,6 +8,15 @@
     <!-- Link to favicon -->
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
+    <!-- Inject environment variables using Vercel -->
+    <script>
+        // Environment variables are injected during build by Vercel
+        window.env = {
+            OPENAI_API_KEY: "<%= NEXT_PUBLIC_OPENAI_API_KEY %>",
+            WORDPRESS_JWT_TOKEN: "<%= NEXT_PUBLIC_WORDPRESS_JWT_TOKEN %>"
+        };
+    </script>
+
     <script>
         async function generateContent(event) {
             event.preventDefault();
@@ -39,11 +48,11 @@
                     Include Images: ${includeImages ? "Yes" : "No"}.
                 `;
 
-                // Access environment variables from Vercel
+                // Access environment variables from window.env
                 const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
-                const chatGPTApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY; // Access from Vercel
+                const chatGPTApiKey = window.env.OPENAI_API_KEY;
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-                const wpApiToken = process.env.NEXT_PUBLIC_WORDPRESS_JWT_TOKEN; // Access from Vercel
+                const wpApiToken = window.env.WORDPRESS_JWT_TOKEN;
 
                 if (!chatGPTApiKey || !wpApiToken) {
                     throw new Error("Environment variables are missing. Ensure they are set in Vercel.");
@@ -208,11 +217,11 @@
         <br><br>
 
         <!-- Submit Button -->
-        <button type="submit">Generate and Publish v56</button>
+        <button type="submit">Generate and Publish</button>
     </form>
 
     <!-- Result Section -->
-    <h2>Generated Content:</h2>
+    <h2>Generated Content v456:</h2>
     <pre id="result"></pre>
 </body>
 </html>
