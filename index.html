@@ -12,47 +12,52 @@
         async function generateContent(event) {
             event.preventDefault();
 
-            // Collect inputs from form fields
-            const keywords = document.getElementById("keywords").value;
-            const contentType = document.getElementById("content_type").value;
-            const tone = document.getElementById("tone").value;
-            const audience = document.getElementById("audience").value;
-            const wordCount = document.getElementById("word_count").value;
-            const structure = document.getElementById("structure").value;
-            const seoKeywords = document.getElementById("seo_keywords").value;
-            const cta = document.getElementById("cta").value;
-            const includeImages = document.getElementById("images").value === "true";
-            const format = document.getElementById("format").value;
-            const language = document.getElementById("language").value;
-
-            // Prepare the prompt for ChatGPT
-            const prompt = `
-                Generate a ${tone} ${contentType} targeted at ${audience}.
-                Keywords: ${keywords}.
-                SEO Keywords: ${seoKeywords}.
-                Word Count: ${wordCount}.
-                Structure: ${structure}.
-                Call-to-Action: ${cta}.
-                Format: ${format}.
-                Language: ${language}.
-                Include Images: ${includeImages ? "Yes" : "No"}.
-            `;
-
-            // ChatGPT API Configuration
-            const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
-            const chatGPTApiKey = window.env.OPENAI_API_KEY;
-			console.log('API URL:', chatGPTApiKey);
-
-			const chatGPTRequestBody = {
-                model: "gpt-3.5-turbo",
-                messages: [
-                    { role: "system", content: "You are a helpful assistant." },
-                    { role: "user", content: prompt }
-                ],
-                max_tokens: 1500
-            };
-
             try {
+                // Collect inputs from form fields
+                const keywords = document.getElementById("keywords").value;
+                const contentType = document.getElementById("content_type").value;
+                const tone = document.getElementById("tone").value;
+                const audience = document.getElementById("audience").value;
+                const wordCount = document.getElementById("word_count").value;
+                const structure = document.getElementById("structure").value;
+                const seoKeywords = document.getElementById("seo_keywords").value;
+                const cta = document.getElementById("cta").value;
+                const includeImages = document.getElementById("images").value === "true";
+                const format = document.getElementById("format").value;
+                const language = document.getElementById("language").value;
+
+                // Prepare the prompt for ChatGPT
+                const prompt = `
+                    Generate a ${tone} ${contentType} targeted at ${audience}.
+                    Keywords: ${keywords}.
+                    SEO Keywords: ${seoKeywords}.
+                    Word Count: ${wordCount}.
+                    Structure: ${structure}.
+                    Call-to-Action: ${cta}.
+                    Format: ${format}.
+                    Language: ${language}.
+                    Include Images: ${includeImages ? "Yes" : "No"}.
+                `;
+
+                // Access environment variables from Vercel
+                const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
+                const chatGPTApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY; // Access from Vercel
+                const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+                const wpApiToken = process.env.NEXT_PUBLIC_WORDPRESS_JWT_TOKEN; // Access from Vercel
+
+                if (!chatGPTApiKey || !wpApiToken) {
+                    throw new Error("Environment variables are missing. Ensure they are set in Vercel.");
+                }
+
+                const chatGPTRequestBody = {
+                    model: "gpt-3.5-turbo",
+                    messages: [
+                        { role: "system", content: "You are a helpful assistant." },
+                        { role: "user", content: prompt }
+                    ],
+                    max_tokens: 1500
+                };
+
                 // Call ChatGPT API
                 const chatGPTResponse = await fetch(chatGPTApiUrl, {
                     method: "POST",
@@ -72,11 +77,6 @@
 
                 // Display the generated content
                 document.getElementById("result").textContent = generatedContent;
-
-                // WordPress API Configuration
-                const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-                const wpApiToken = window.env.OPENAI_API_KEY;
-							console.log('API URL:', wpApiToken);
 
                 const wpRequestBody = {
                     title: `Generated Content - ${keywords}`,
@@ -212,7 +212,7 @@
     </form>
 
     <!-- Result Section -->
-    <h2>Generated Content v21:</h2>
+    <h2>Generated Content:</h2>
     <pre id="result"></pre>
 </body>
 </html>
