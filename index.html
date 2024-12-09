@@ -53,6 +53,8 @@
                 const chatGPTApiKey = window.env.OPENAI_API_KEY;
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
                 const wpApiToken = window.env.WORDPRESS_JWT_TOKEN;
+                 consol.log(chatGPTApiUrl);
+				 consol.log(chatGPTApiKey);
 
                 if (!chatGPTApiKey || !wpApiToken) {
                     throw new Error("Environment variables are missing. Ensure they are set in Vercel.");
@@ -221,7 +223,7 @@
     </form>
 
     <!-- Result Section -->
-    <h2>Generated Content v456:</h2>
+    <h2>Generated Content v457:</h2>
     <pre id="result"></pre>
 </body>
 </html>
