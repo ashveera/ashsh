@@ -53,8 +53,8 @@
                 const chatGPTApiKey = window.env.OPENAI_API_KEY;
                 const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
                 const wpApiToken = window.env.WORDPRESS_JWT_TOKEN;
-				console.log('fgfgfdgdf'+chatGPTApiKey);
-              
+console.log("Environment Variables:", window.env);
+console.log("OpenAI API Key:", window.env.OPENAI_API_KEY);              
 
                 if (!chatGPTApiKey || !wpApiToken) {
                     throw new Error("Environment variables are missing. Ensure they are set in Vercel.");
