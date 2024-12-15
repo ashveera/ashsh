@@ -4,29 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatGPT Content Generator & WordPress Publisher</title>
-    
-    <!-- Link to favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
-    <!-- Inject environment variables during the build -->
-    <script>
-        window.env = {
-            OPENAI_API_KEY: "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",
-            WORDPRESS_JWT_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2ZpdG5lc3Nib2R5YnVpbGRpbmd2b2x0LmNvbSIsImlhdCI6MTczMjQ0NTczNiwibmJmIjoxNzMyNDQ1NzM2LCJleHAiOjE3MzMwNTA1MzYsImRhdGEiOnsidXNlciI6eyJpZCI6IjEifX19.iw96IxQiXSnBXZNWk_nFhnVMrgVRKQfXsUooS_DRLN"
-        };
-    </script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js"></script>
 
     <script>
+        // Step 1: Firebase Configuration
+       const firebaseConfig = {
+  apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+  authDomain: "cuppashash.firebaseapp.com",
+  projectId: "cuppashash",
+  storageBucket: "cuppashash.firebasestorage.app",
+  messagingSenderId: "604204628087",
+  appId: "1:604204628087:web:29f9ada8099680af592e72",
+};
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Step 2: Fetch API Keys from Firestore
+        let chatGPTApiKey = "";
+        let wpApiToken = "";
+
+        async function fetchApiKeys() {
+            try {
+                const keysDoc = await db.collection("api_keys").doc("openai_key").get();
+
+                if (keysDoc.exists) {
+                    chatGPTApiKey = keysDoc.data().key_value;
+                    wpApiToken = keysDoc.data().wordpress_key;
+
+                    console.log("OpenAI API Key Loaded:", chatGPTApiKey);
+                    console.log("WordPress JWT Token Loaded:", wpApiToken);
+                } else {
+                    console.error("Error: API keys document not found in Firestore.");
+                }
+            } catch (error) {
+                console.error("Error fetching keys from Firestore:", error);
+                document.getElementById("result").textContent = "Error loading API keys.";
+            }
+        }
+
+        window.onload = fetchApiKeys;
+
+        // Step 3: Function to Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
 
             try {
+                if (!chatGPTApiKey || !wpApiToken) {
+                    throw new Error("API Keys not loaded. Please refresh the page.");
+                }
+
                 // Collect inputs from form fields
                 const keywords = document.getElementById("keywords").value;
                 const contentType = document.getElementById("content_type").value;
                 const tone = document.getElementById("tone").value;
-                const audience = document.getElementById("audience").value;
                 const wordCount = document.getElementById("word_count").value;
+                const audience = document.getElementById("audience").value;
                 const structure = document.getElementById("structure").value;
                 const seoKeywords = document.getElementById("seo_keywords").value;
                 const cta = document.getElementById("cta").value;
@@ -47,31 +84,18 @@
                     Include Images: ${includeImages ? "Yes" : "No"}.
                 `;
 
-                // Access environment variables from `window.env`
-                const chatGPTApiKey = window.env.OPENAI_API_KEY;
-                const wpApiToken = window.env.WORDPRESS_JWT_TOKEN;
-
-                // Debugging logs
-                console.log("OpenAI API Key:", chatGPTApiKey);
-                console.log("WordPress JWT Token:", wpApiToken);
-
-                if (!chatGPTApiKey || !wpApiToken) {
-                    throw new Error("Environment variables are missing. Ensure they are set correctly in Vercel.");
-                }
-
                 const chatGPTApiUrl = "https://api.openai.com/v1/chat/completions";
-                const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
 
+                // Call OpenAI API
                 const chatGPTRequestBody = {
                     model: "gpt-3.5-turbo",
                     messages: [
                         { role: "system", content: "You are a helpful assistant." },
                         { role: "user", content: prompt }
                     ],
-                    max_tokens: 1500
+                    max_tokens: 1000
                 };
 
-                // Call ChatGPT API
                 const chatGPTResponse = await fetch(chatGPTApiUrl, {
                     method: "POST",
                     headers: {
@@ -82,7 +106,7 @@
                 });
 
                 if (!chatGPTResponse.ok) {
-                    throw new Error(`ChatGPT API Error: ${chatGPTResponse.statusText}`);
+                    throw new Error(`OpenAI Error: ${chatGPTResponse.statusText}`);
                 }
 
                 const chatGPTData = await chatGPTResponse.json();
@@ -91,14 +115,15 @@
                 // Display the generated content
                 document.getElementById("result").textContent = generatedContent;
 
-                // Prepare WordPress post request
+                // Post content to WordPress
+                const wpApiUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+
                 const wpRequestBody = {
                     title: `Generated Content - ${keywords}`,
                     content: generatedContent,
-                    status: "publish" // Change to 'draft' if needed
+                    status: "publish" // Set to 'draft' for testing
                 };
 
-                // Post to WordPress
                 const wpResponse = await fetch(wpApiUrl, {
                     method: "POST",
                     headers: {
@@ -124,109 +149,65 @@
 <body>
     <h1>ChatGPT Content Generator & WordPress Publisher</h1>
     <form id="contentForm" onsubmit="generateContent(event)">
-        <!-- Keywords Input -->
         <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" name="keywords" placeholder="Enter keywords separated by commas" required>
-        <br><br>
+        <input type="text" id="keywords" placeholder="Enter keywords" required><br><br>
 
-        <!-- Content Type Dropdown -->
         <label for="content_type">Content Type:</label>
-        <select id="content_type" name="content_type" required>
+        <select id="content_type" required>
             <option value="blog_post">Blog Post</option>
             <option value="product_review">Product Review</option>
-            <option value="affiliate_article">Affiliate Article</option>
-            <option value="news_article">News Article</option>
-            <option value="informational">Informational Article</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- Tone Dropdown -->
         <label for="tone">Tone:</label>
-        <select id="tone" name="tone" required>
+        <select id="tone" required>
             <option value="formal">Formal</option>
             <option value="casual">Casual</option>
             <option value="friendly">Friendly</option>
-            <option value="professional">Professional</option>
-            <option value="witty">Witty</option>
-            <option value="engaging">Engaging</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- Target Audience Dropdown -->
-        <label for="audience">Target Audience:</label>
-        <select id="audience" name="audience">
-            <option value="fitness_enthusiasts">Fitness Enthusiasts</option>
-            <option value="tech_savvy">Tech-Savvy Individuals</option>
-            <option value="beginners_finance">Beginners in Finance</option>
-            <option value="college_students">College Students</option>
-        </select>
-        <br><br>
-
-        <!-- Word Count Dropdown -->
         <label for="word_count">Word Count:</label>
-        <select id="word_count" name="word_count" required>
+        <select id="word_count" required>
             <option value="500">500 Words</option>
             <option value="1000">1000 Words</option>
-            <option value="2000">2000+ Words</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- Structure Dropdown -->
+        <label for="audience">Target Audience:</label>
+        <input type="text" id="audience" placeholder="E.g., Tech Enthusiasts" required><br><br>
+
         <label for="structure">Structure:</label>
-        <select id="structure" name="structure">
+        <select id="structure">
             <option value="intro_main_conclusion">Introduction → Main Points → Conclusion</option>
             <option value="bullet_points">Bullet Points</option>
-            <option value="problem_solution_benefits">Problem → Solution → Benefits</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- SEO Keywords -->
         <label for="seo_keywords">SEO Keywords:</label>
-        <input type="text" id="seo_keywords" name="seo_keywords" placeholder="Enter SEO keywords separated by commas">
-        <br><br>
+        <input type="text" id="seo_keywords" placeholder="SEO keywords"><br><br>
 
-        <!-- Call-to-Action Dropdown -->
-        <label for="cta">Call-to-Actions:</label>
-        <select id="cta" name="cta">
-            <option value="subscribe">Subscribe to Newsletter</option>
-            <option value="click_here_buy">Click Here to Buy Now</option>
-            <option value="learn_more">Learn More About This Topic</option>
-        </select>
-        <br><br>
+        <label for="cta">Call to Action:</label>
+        <input type="text" id="cta" placeholder="E.g., Subscribe Now"><br><br>
 
-        <!-- Include Images -->
         <label for="images">Include Images:</label>
-        <select id="images" name="images">
+        <select id="images">
             <option value="true">Yes</option>
             <option value="false">No</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- Format Dropdown -->
         <label for="format">Content Format:</label>
-        <select id="format" name="format">
-            <option value="markdown">Markdown</option>
+        <select id="format">
             <option value="html">HTML</option>
             <option value="plain_text">Plain Text</option>
-            <option value="rich_text">Rich Text</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- Language Dropdown -->
         <label for="language">Language:</label>
-        <select id="language" name="language">
+        <select id="language">
             <option value="english">English</option>
             <option value="spanish">Spanish</option>
-            <option value="french">French</option>
-        </select>
-        <br><br>
+        </select><br><br>
 
-        <!-- Submit Button -->
         <button type="submit">Generate and Publish</button>
     </form>
 
-    <!-- Result Section -->
     <h2>Generated Content:</h2>
-    <pre id="result"></pre>
+    <pre id="result">Loading API keys...</pre>
 </body>
 </html>
