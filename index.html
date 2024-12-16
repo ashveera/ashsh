@@ -3,145 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Content Generator & WordPress Publisher</title>
-    <!-- Firebase SDK -->
+    <title>Content Generator & Publisher</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <h1>Advanced Content Generator & Publisher</h1>
     <form id="contentForm" onsubmit="generateContent(event)">
-        <!-- Input Fields -->
         <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" placeholder="Enter primary keywords" required><br><br>
+        <input type="text" id="keywords" placeholder="Enter keywords" required><br><br>
 
         <label for="content_type">Content Type:</label>
         <select id="content_type" required>
             <option value="blog_post">Blog Post</option>
             <option value="product_review">Product Review</option>
-            <option value="how_to_guide">How-To Guide</option>
-        </select><br><br>
-
-        <label for="tone">Tone of Voice:</label>
-        <select id="tone" required>
-            <option value="formal">Formal</option>
-            <option value="casual">Casual</option>
-            <option value="friendly">Friendly</option>
-        </select><br><br>
-
-        <label for="word_count">Word Count:</label>
-        <select id="word_count" required>
-            <option value="500">500 Words</option>
-            <option value="1000">1000 Words</option>
-        </select><br><br>
-
-        <label for="include_images">Include Images:</label>
-        <select id="include_images" required>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
         </select><br><br>
 
         <button type="submit">Generate and Publish</button>
     </form>
 
     <h2>Generated Content:</h2>
-    <pre id="result">Loading API keys...</pre>
+    <pre id="result">Loading...</pre>
 
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_AUTH_DOMAIN",
             projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
         };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let chatGPTApiKey = "";
         let wpApiToken = "";
+        let chatGPTApiKey = "";
 
-        // Fetch API Keys from Firebase
+        // Fetch API keys from Firebase
         async function fetchApiKeys() {
-            try {
-                const keysDoc = await db.collection("api_keys").doc("openai_key").get();
-                if (keysDoc.exists) {
-                    chatGPTApiKey = keysDoc.data().key_value;
-                    wpApiToken = keysDoc.data().wordpress_key;
-                    console.log("API keys loaded successfully.");
-                } else {
-                    console.error("Error: API keys not found.");
-                }
-            } catch (error) {
-                console.error("Error fetching API keys:", error);
+            const doc = await db.collection("api_keys").doc("openai_key").get();
+            if (doc.exists) {
+                chatGPTApiKey = doc.data().key_value;
+                wpApiToken = doc.data().wordpress_key;
             }
         }
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate Content and Post to WordPress
+        // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
 
             const keywords = document.getElementById("keywords").value;
             const contentType = document.getElementById("content_type").value;
-            const tone = document.getElementById("tone").value;
-            const wordCount = document.getElementById("word_count").value;
-            const includeImages = document.getElementById("include_images").value === "true";
+
+            if (!wpApiToken || !chatGPTApiKey) {
+                alert("API keys not loaded. Please refresh the page.");
+                return;
+            }
 
             try {
-                if (!chatGPTApiKey || !wpApiToken) throw new Error("API Keys not loaded.");
-
-                // Build the ChatGPT prompt
-                let prompt = `Write a ${wordCount}-word ${tone} ${contentType} on the topic: ${keywords}.
-                ${includeImages ? "Include placeholder image references with alt text." : ""}`;
+                // Build the prompt
+                const prompt = `Write a detailed ${contentType} using the keywords: ${keywords}.`;
 
                 // Call OpenAI API
                 const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`
+                        Authorization: `Bearer ${chatGPTApiKey}`,
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
-                        messages: [{ role: "system", content: "You are a professional content writer." }, { role: "user", content: prompt }],
-                        max_tokens: wordCount === "500" ? 500 : 1000
-                    })
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 500,
+                    }),
                 });
 
-                const chatGPTData = await chatGPTResponse.json();
-                const generatedContent = chatGPTData.choices[0].message.content;
+                const data = await chatGPTResponse.json();
+                const generatedContent = data.choices[0].message.content;
 
-                let finalContent = generatedContent;
-                if (includeImages) {
-                    finalContent += `<p><img src="https://via.placeholder.com/600x400" alt="Placeholder Image"></p>`;
-                }
+                document.getElementById("result").textContent = generatedContent;
 
-                // Display Generated Content
-                document.getElementById("result").textContent = finalContent;
-
-                // Send content to proxy with WordPress key
-                const wpResponse = await fetch("/api/posts", {
+                // Post content to proxy
+                const proxyResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: finalContent,
+                        content: generatedContent,
                         status: "publish",
-                        wordpressToken: wpApiToken
-                    })
+                        wordpressToken: wpApiToken, // Pass WordPress key here
+                    }),
                 });
 
-                if (!wpResponse.ok) throw new Error("Failed to post content to WordPress.");
-                const wpData = await wpResponse.json();
+                const proxyData = await proxyResponse.json();
+                alert(`Content posted successfully! View it here: ${proxyData.link}`);
 
-                alert(`Content posted successfully! View it here: ${wpData.link}`);
             } catch (error) {
                 console.error("Error:", error);
-                document.getElementById("result").textContent = "An error occurred. Check the console for details.";
+                document.getElementById("result").textContent = "An error occurred.";
             }
         }
     </script>
