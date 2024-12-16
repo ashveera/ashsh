@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatGPT Content Generator & WordPress Publisher</title>
-
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -19,14 +18,12 @@
         <select id="content_type" required>
             <option value="blog_post">Blog Post</option>
             <option value="product_review">Product Review</option>
-            <option value="how_to_guide">How-to Guide</option>
         </select><br><br>
 
         <label for="tone">Tone:</label>
         <select id="tone" required>
             <option value="formal">Formal</option>
             <option value="casual">Casual</option>
-            <option value="friendly">Friendly</option>
         </select><br><br>
 
         <label for="word_count">Word Count:</label>
@@ -35,47 +32,15 @@
             <option value="1000">1000 Words</option>
         </select><br><br>
 
-        <label for="audience">Target Audience:</label>
-        <input type="text" id="audience" placeholder="E.g., Tech Enthusiasts" required><br><br>
-
-        <label for="structure">Structure:</label>
-        <select id="structure">
-            <option value="intro_main_conclusion">Introduction → Main Points → Conclusion</option>
-            <option value="bullet_points">Bullet Points</option>
-        </select><br><br>
-
-        <label for="seo_keywords">SEO Keywords:</label>
-        <input type="text" id="seo_keywords" placeholder="SEO keywords"><br><br>
-
-        <label for="cta">Call to Action:</label>
-        <input type="text" id="cta" placeholder="E.g., Subscribe Now"><br><br>
-
-        <label for="images">Include Images:</label>
-        <select id="images">
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-        </select><br><br>
-
-        <label for="format">Content Format:</label>
-        <select id="format">
-            <option value="html">HTML</option>
-            <option value="plain_text">Plain Text</option>
-        </select><br><br>
-
-        <label for="language">Language:</label>
-        <select id="language">
-            <option value="english">English</option>
-            <option value="spanish">Spanish</option>
-        </select><br><br>
-
         <button type="submit">Generate and Publish</button>
     </form>
 
     <h2>Generated Content:</h2>
     <pre id="result">Loading API keys...</pre>
 
+    <!-- JavaScript Code -->
     <script>
-        // Step 1: Firebase Configuration
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -84,72 +49,57 @@
             messagingSenderId: "604204628087",
             appId: "1:604204628087:web:29f9ada8099680af592e72"
         };
-
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // Step 2: Fetch API Keys from Firestore
+        // Fetch API Keys
         let chatGPTApiKey = "";
         let wpApiToken = "";
 
         async function fetchApiKeys() {
             try {
                 const keysDoc = await db.collection("api_keys").doc("openai_key").get();
-
                 if (keysDoc.exists) {
                     chatGPTApiKey = keysDoc.data().key_value;
                     wpApiToken = keysDoc.data().wordpress_key;
-
-                    console.log("OpenAI API Key Loaded:", chatGPTApiKey);
-                    console.log("WordPress JWT Token Loaded:", wpApiToken);
+                    console.log("API keys loaded successfully.");
                 } else {
-                    console.error("Error: API keys document not found in Firestore.");
+                    console.error("API keys document not found.");
                 }
             } catch (error) {
-                console.error("Error fetching keys from Firestore:", error);
-                document.getElementById("result").textContent = "Error loading API keys.";
+                console.error("Error fetching API keys:", error);
             }
         }
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Step 3: Generate Content and Publish to WordPress
+        // Generate Content
         async function generateContent(event) {
             event.preventDefault();
 
-            try {
-                // Collect inputs
-                const keywords = document.getElementById("keywords").value || "";
-                const contentType = document.getElementById("content_type").value;
-                const tone = document.getElementById("tone").value;
-                const wordCount = document.getElementById("word_count").value;
-                const audience = document.getElementById("audience").value || "";
-                const structure = document.getElementById("structure").value;
-                const seoKeywords = document.getElementById("seo_keywords").value || "";
-                const cta = document.getElementById("cta").value || "";
-                const includeImages = document.getElementById("images").value === "true";
-                const format = document.getElementById("format").value;
-                const language = document.getElementById("language").value;
+            // Safely access form elements
+            const keywordsEl = document.getElementById("keywords");
+            const contentTypeEl = document.getElementById("content_type");
+            const toneEl = document.getElementById("tone");
+            const wordCountEl = document.getElementById("word_count");
 
-                if (!chatGPTApiKey || !wpApiToken) {
-                    throw new Error("API Keys not loaded. Please refresh the page.");
+            if (!keywordsEl || !contentTypeEl || !toneEl || !wordCountEl) {
+                console.error("Some form fields are missing in the DOM.");
+                return;
+            }
+
+            try {
+                const keywords = keywordsEl.value;
+                const contentType = contentTypeEl.value;
+                const tone = toneEl.value;
+                const wordCount = wordCountEl.value;
+
+                if (!chatGPTApiKey) {
+                    throw new Error("API keys not loaded.");
                 }
 
-                // Prepare the prompt
-                const prompt = `
-                    Generate a ${tone} ${contentType} targeted at ${audience}.
-                    Keywords: ${keywords}.
-                    SEO Keywords: ${seoKeywords}.
-                    Word Count: ${wordCount}.
-                    Structure: ${structure}.
-                    Call-to-Action: ${cta}.
-                    Format: ${format}.
-                    Language: ${language}.
-                    Include Images: ${includeImages ? "Yes" : "No"}.
-                `;
-
-                // Call OpenAI API
+                // OpenAI API Request
+                const prompt = `Generate a ${tone} ${contentType} using these keywords: ${keywords}`;
                 const response = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -163,14 +113,17 @@
                     })
                 });
 
-                const result = await response.json();
-                const generatedContent = result.choices[0].message.content;
+                if (!response.ok) throw new Error("Failed to fetch content from OpenAI.");
 
+                const data = await response.json();
+                const generatedContent = data.choices[0].message.content;
+
+                // Display generated content
                 document.getElementById("result").textContent = generatedContent;
 
             } catch (error) {
                 console.error("Error:", error);
-                document.getElementById("result").textContent = "An error occurred. Check console for details.";
+                document.getElementById("result").textContent = "An error occurred. Check the console for details.";
             }
         }
     </script>
