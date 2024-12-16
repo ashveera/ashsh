@@ -1,57 +1,39 @@
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
-    const wordpressApiUrl = 'https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts';
+  const targetUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+  const { title, content, status, wordpressToken } = req.body; // Receive WordPress key
 
-    // Allow POST requests only
-    if (req.method !== 'POST') {
-        res.setHeader('Allow', 'POST');
-        return res.status(405).json({ error: 'Method Not Allowed. Use POST.' });
+  try {
+    // Ensure the WordPress token is provided
+    if (!wordpressToken) {
+      throw new Error("Missing WordPress API token.");
     }
 
-    try {
-        const { title, content, status, wordpressToken } = req.body;
+    // Send request to WordPress API
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${wordpressToken}`, // Use the token passed from index
+      },
+      body: JSON.stringify({
+        title,
+        content,
+        status: status || "publish", // Default status is "publish"
+      }),
+    });
 
-        // Validate required fields
-        if (!title || !content || !status || !wordpressToken) {
-            return res.status(400).json({ error: 'Missing required fields: title, content, status, wordpressToken.' });
-        }
+    // Parse and handle WordPress API response
+    const data = await response.json();
 
-        // Send POST request to WordPress API
-        const response = await fetch(wordpressApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${wordpressToken}`, // Pass the token received from index.html
-            },
-            body: JSON.stringify({
-                title,
-                content,
-                status,
-            }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            console.error('WordPress API Error:', data);
-            return res.status(response.status).json({
-                error: 'Failed to publish content to WordPress.',
-                details: data,
-            });
-        }
-
-        // Success response
-        res.status(201).json({
-            message: 'Content posted successfully!',
-            link: data.link,
-            id: data.id,
-        });
-    } catch (error) {
-        console.error('Proxy Error:', error.message);
-        res.status(500).json({
-            error: 'Internal Server Error',
-            details: error.message,
-        });
+    if (!response.ok) {
+      throw new Error(`WordPress API Error: ${data.message}`);
     }
+
+    res.status(200).json({ success: true, link: data.link });
+  } catch (error) {
+    console.error("Proxy Error:", error.message);
+    res.status(500).json({ error: error.message });
+  }
 };
