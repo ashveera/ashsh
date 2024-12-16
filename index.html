@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Content Generator & WordPress Publisher</title>
+    <title>Advanced Content Generator & Publisher</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -11,13 +11,16 @@
 <body>
     <h1>Advanced Content Generator & Publisher</h1>
     <form id="contentForm" onsubmit="generateContent(event)">
-        <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" placeholder="Primary keywords" required><br><br>
+        <!-- Input Fields -->
+        <label for="keywords">Primary Keywords:</label>
+        <input type="text" id="keywords" placeholder="Enter primary keywords" required><br><br>
 
         <label for="content_type">Content Type:</label>
         <select id="content_type" required>
             <option value="blog_post">Blog Post</option>
             <option value="product_review">Product Review</option>
+            <option value="how_to_guide">How-To Guide</option>
+            <option value="case_study">Case Study</option>
         </select><br><br>
 
         <label for="tone">Tone of Voice:</label>
@@ -27,12 +30,17 @@
             <option value="friendly">Friendly</option>
             <option value="technical">Technical</option>
             <option value="persuasive">Persuasive</option>
+            <option value="humorous">Humorous</option>
         </select><br><br>
+
+        <label for="audience">Target Audience:</label>
+        <input type="text" id="audience" placeholder="E.g., Fitness Enthusiasts" required><br><br>
 
         <label for="word_count">Word Count:</label>
         <select id="word_count" required>
             <option value="500">500 Words</option>
             <option value="1000">1000 Words</option>
+            <option value="1500">1500 Words</option>
         </select><br><br>
 
         <label for="include_images">Include Images:</label>
@@ -41,16 +49,19 @@
             <option value="false">No</option>
         </select><br><br>
 
+        <label for="cta">Call-to-Action:</label>
+        <input type="text" id="cta" placeholder="E.g., Subscribe Now, Learn More" required><br><br>
+
         <button type="submit">Generate and Publish</button>
     </form>
 
     <h2>Generated Content:</h2>
-    <pre id="result">Loading API keys...</pre>
+    <pre id="result">Loading...</pre>
 
     <!-- JavaScript -->
     <script>
         // Firebase Configuration
-        const firebaseConfig = {
+      const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
             projectId: "cuppashash",
@@ -64,88 +75,88 @@
         let chatGPTApiKey = "";
         let wpApiToken = "";
 
-        // Fetch API Keys
+        // Fetch API Keys from Firebase
         async function fetchApiKeys() {
             try {
                 const keysDoc = await db.collection("api_keys").doc("openai_key").get();
                 if (keysDoc.exists) {
                     chatGPTApiKey = keysDoc.data().key_value;
                     wpApiToken = keysDoc.data().wordpress_key;
-                    console.log("API keys loaded successfully.");
                 } else {
-                    console.error("Error: API keys not found.");
+                    console.error("API keys not found!");
                 }
             } catch (error) {
                 console.error("Error fetching API keys:", error);
             }
         }
+
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate Content and Post to WordPress
+        // Generate Content
         async function generateContent(event) {
             event.preventDefault();
 
             const keywords = document.getElementById("keywords").value;
             const contentType = document.getElementById("content_type").value;
             const tone = document.getElementById("tone").value;
+            const audience = document.getElementById("audience").value;
             const wordCount = document.getElementById("word_count").value;
             const includeImages = document.getElementById("include_images").value === "true";
+            const cta = document.getElementById("cta").value;
 
             try {
-                if (!chatGPTApiKey || !wpApiToken) throw new Error("API Keys not loaded.");
-
-                // Build the ChatGPT prompt
-                let prompt = `
-                    Write a ${wordCount}-word ${tone} ${contentType} using the following keywords: ${keywords}.
-                    ${includeImages ? "Include placeholder image references with relevant alt text." : ""}
+                const prompt = `
+                    Write a ${wordCount}-word ${tone} ${contentType} targeting ${audience}.
+                    Use the following primary keywords: ${keywords}.
+                    Add a call-to-action: ${cta}.
+                    ${includeImages ? "Include placeholder image references." : ""}
                 `;
 
-                // Call OpenAI API
+                // Call OpenAI
                 const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`
+                        Authorization: `Bearer ${chatGPTApiKey}`,
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
-                        messages: [{ role: "system", content: "You are a professional content writer." }, { role: "user", content: prompt }],
-                        max_tokens: wordCount === "500" ? 500 : 1000
-                    })
+                        messages: [
+                            { role: "system", content: "You are a professional content writer." },
+                            { role: "user", content: prompt }
+                        ],
+                        max_tokens: wordCount === "500" ? 500 : 1500,
+                    }),
                 });
 
-                const chatGPTData = await chatGPTResponse.json();
-                const generatedContent = chatGPTData.choices[0].message.content;
+                const data = await chatGPTResponse.json();
+                const generatedContent = data.choices[0].message.content;
 
-                // Add placeholder images if requested
                 let finalContent = generatedContent;
                 if (includeImages) {
                     finalContent += `<p><img src="https://via.placeholder.com/600x400" alt="Placeholder Image"></p>`;
                 }
 
-                // Display Generated Content
                 document.getElementById("result").textContent = finalContent;
 
-                // Post to WordPress using the proxy
-                const wpResponse = await fetch("/api/posts", {
+                // Post to WordPress
+                const response = await fetch("/api/posts", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
                         content: finalContent,
-                        status: "publish" // Change to "draft" for testing
-                    })
+                        status: "publish",
+                        wordpressToken: wpApiToken,
+                    }),
                 });
 
-                if (!wpResponse.ok) throw new Error("Failed to post content to WordPress.");
-                const wpData = await wpResponse.json();
+                const wpResponse = await response.json();
+                alert(`Content posted successfully! View it here: ${wpResponse.link}`);
 
-                alert(`Content posted to WordPress successfully! View it here: ${wpData.link}`);
             } catch (error) {
                 console.error("Error:", error);
-                document.getElementById("result").textContent = "An error occurred. Please check the console for details.";
+                document.getElementById("result").textContent = "An error occurred. Check the console for details.";
             }
         }
     </script>
