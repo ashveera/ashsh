@@ -53,6 +53,12 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
         .error {
             color: red;
             font-weight: bold;
@@ -105,6 +111,7 @@
     </form>
 
     <h2>Generated Content:</h2>
+    <img id="featuredImage" src="https://source.unsplash.com/800x400/?fitness,human" alt="Featured Image">
     <pre id="result">Waiting for content...</pre>
     <p id="error" class="error"></p>
 
@@ -159,6 +166,7 @@
 
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
+            const featuredImage = document.getElementById("featuredImage");
 
             // Reset placeholders
             resultPlaceholder.textContent = "Generating content, please wait...";
@@ -187,7 +195,20 @@
 
                 const chatGPTData = await chatGPTResponse.json();
                 const generatedContent = chatGPTData.choices[0].message.content;
-                resultPlaceholder.textContent = generatedContent;
+
+                const paragraphs = generatedContent.split("\n\n");
+                let contentWithImages = "";
+
+                paragraphs.forEach((paragraph, index) => {
+                    contentWithImages += `<p>${paragraph}</p>`;
+                    if (includeImages === "true" && index % 2 === 0) {
+                        contentWithImages += `<img src="https://source.unsplash.com/800x400/?human,nature" alt="Image">`;
+                    }
+                });
+
+                resultPlaceholder.innerHTML = contentWithImages;
+
+                featuredImage.src = "https://source.unsplash.com/800x400/?fitness,human";
 
                 // Step 2: Post content to WordPress via Proxy
                 const proxyResponse = await fetch("/api/posts", {
