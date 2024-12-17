@@ -41,7 +41,7 @@ app.post("/api/posts", async (req, res) => {
             });
         }
 
-        // Success: Send back the link
+        // Success: Send back the links
         return res.status(200).json({
             success: true,
             message: "Content posted successfully!",
