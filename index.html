@@ -65,13 +65,41 @@
     <!-- Form for Content Input -->
     <form id="contentForm" onsubmit="generateContent(event)">
         <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Chest Muscle)" required>
+        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
 
         <label for="content_type">Content Type:</label>
         <select id="content_type" required>
             <option value="blog_post">Blog Post</option>
             <option value="product_review">Product Review</option>
+            <option value="affiliate_article">Affiliate Article</option>
         </select>
+
+        <label for="tone">Tone:</label>
+        <select id="tone">
+            <option value="formal">Formal</option>
+            <option value="casual">Casual</option>
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+        </select>
+
+        <label for="audience">Target Audience:</label>
+        <input type="text" id="audience" placeholder="e.g., Beginners, Fitness Enthusiasts" required>
+
+        <label for="word_count">Word Count:</label>
+        <select id="word_count">
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="2000">2000+</option>
+        </select>
+
+        <label for="include_images">Include Images:</label>
+        <select id="include_images">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+        </select>
+
+        <label for="seo_keywords">SEO Keywords:</label>
+        <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
         <button type="submit">Generate and Publish</button>
     </form>
@@ -106,8 +134,6 @@
                 if (doc.exists) {
                     chatGPTApiKey = doc.data().key_value;
                     wpApiToken = doc.data().wordpress_key;
-					 console.log("WordPress Token:", wpApiToken);
-            console.log("OpenAI API Key:", chatGPTApiKey);
                 } else {
                     throw new Error("API keys not found in Firestore.");
                 }
@@ -125,6 +151,12 @@
 
             const keywords = document.getElementById("keywords").value;
             const contentType = document.getElementById("content_type").value;
+            const tone = document.getElementById("tone").value;
+            const audience = document.getElementById("audience").value;
+            const wordCount = document.getElementById("word_count").value;
+            const includeImages = document.getElementById("include_images").value;
+            const seoKeywords = document.getElementById("seo_keywords").value;
+
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
 
@@ -138,8 +170,7 @@
             }
 
             try {
-                // Step 1: Generate content using OpenAI API
-                const prompt = `Write a detailed ${contentType.replace("_", " ")} using the keywords: ${keywords}.`;
+                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
 
                 const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
@@ -150,16 +181,11 @@
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
                         messages: [{ role: "user", content: prompt }],
-                        max_tokens: 500,
+                        max_tokens: 1000,
                     }),
                 });
 
                 const chatGPTData = await chatGPTResponse.json();
-
-                if (!chatGPTResponse.ok || !chatGPTData.choices) {
-                    throw new Error("Failed to generate content. Check OpenAI API.");
-                }
-
                 const generatedContent = chatGPTData.choices[0].message.content;
                 resultPlaceholder.textContent = generatedContent;
 
@@ -176,11 +202,6 @@
                 });
 
                 const proxyData = await proxyResponse.json();
-
-                if (!proxyResponse.ok) {
-                    throw new Error(proxyData.error || "Failed to post content to WordPress.");
-                }
-
                 alert(`Content posted successfully! View it here: ${proxyData.link}`);
 
             } catch (error) {
