@@ -1,5 +1,5 @@
 const express = require("express");
-const fetch = require("node-fetch"); // Import the fetch library for server-side HTTP requests
+const fetch = require("node-fetch");
 const app = express();
 
 // Middleware to parse incoming JSON data
@@ -7,8 +7,8 @@ app.use(express.json());
 
 // Endpoint to handle WordPress content creation
 app.post("/api/posts", async (req, res) => {
-    const targetUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts"; // WordPress REST API endpoint
-    const { title, content, status, wordpressToken } = req.body; // Destructure fields from request body
+    const targetUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts"; // WordPress endpoint
+    const { title, content, status, wordpressToken } = req.body;
 
     try {
         // Validate input data
@@ -16,42 +16,39 @@ app.post("/api/posts", async (req, res) => {
             return res.status(400).json({ error: "Missing required fields: title, content, status, or WordPress token." });
         }
 
-        // Prepare the payload to send to WordPress
-        const postData = {
-            title: title,
-            content: content,
-            status: status,
-        };
+        // Prepare the payload for WordPress
+        const postData = { title, content, status };
 
-        // Make a request to the WordPress REST API
+        // Make a request to the WordPress API
         const response = await fetch(targetUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${wordpressToken}`, // Use the provided WordPress token for authentication
+                Authorization: `Bearer ${wordpressToken}`,
             },
             body: JSON.stringify(postData),
         });
 
+        // Parse the response from WordPress
         const data = await response.json();
 
-        // Check for errors in the WordPress response
         if (!response.ok) {
             console.error("WordPress API Error:", data);
-            throw new Error(`WordPress API Error: ${data.message || "Unknown error"}`);
+            return res.status(response.status).json({ error: data.message || "Unknown error from WordPress API" });
         }
 
-        // Send success response back to the client
+        // Success response
         res.status(200).json({
             success: true,
             message: "Content successfully posted to WordPress!",
             link: data.link,
         });
+
     } catch (error) {
         console.error("Proxy Error:", error.message);
         res.status(500).json({
-            success: false,
-            error: error.message || "An unknown error occurred.",
+            error: "Internal Server Error: Unable to post content to WordPress.",
+            details: error.message,
         });
     }
 });
