@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-Powered Content Publisher</title>
+    <title>Advanced Content Generator & Publisher</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+    <!-- Styles -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,8 +15,8 @@
             background-color: #f9f9f9;
         }
         h1 {
-            text-align: center;
             color: #333;
+            text-align: center;
         }
         form {
             background-color: #fff;
@@ -22,16 +24,16 @@
             border: 1px solid #ddd;
             border-radius: 5px;
             max-width: 600px;
-            margin: 20px auto;
+            margin: auto;
         }
         label {
             font-weight: bold;
             display: block;
             margin-bottom: 5px;
         }
-        input, textarea, button {
+        input, select, button {
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             margin-bottom: 15px;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -45,47 +47,59 @@
         button:hover {
             background-color: #0056b3;
         }
+        pre, img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
         .error {
             color: red;
             font-weight: bold;
+            text-align: center;
         }
         .success {
             color: green;
             font-weight: bold;
-        }
-        pre {
-            background-color: #eee;
-            padding: 10px;
-            border-radius: 5px;
-            word-wrap: break-word;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <h1>AI-Powered Content Publisher</h1>
+    <h1>AI Content Generator & Publisher</h1>
 
-    <!-- Input Form -->
+    <!-- Form -->
     <form id="contentForm" onsubmit="generateContent(event)">
-        <label for="title">Post Title:</label>
-        <input type="text" id="title" placeholder="Enter the post title" required>
+        <label for="keywords">Keywords:</label>
+        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
 
-        <label for="keywords">Post Keywords:</label>
-        <input type="text" id="keywords" placeholder="Enter keywords (e.g., fitness, gym)" required>
+        <label for="content_type">Content Type:</label>
+        <select id="content_type" required>
+            <option value="blog_post">Blog Post</option>
+            <option value="product_review">Product Review</option>
+            <option value="affiliate_article">Affiliate Article</option>
+        </select>
+
+        <label for="tone">Tone:</label>
+        <select id="tone">
+            <option value="formal">Formal</option>
+            <option value="casual">Casual</option>
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+        </select>
 
         <button type="submit">Generate and Publish</button>
     </form>
 
-    <!-- Response Section -->
-    <div id="responseSection" style="text-align: center;">
-        <h2>Generated Post</h2>
-        <p id="error" class="error"></p>
-        <p id="success" class="success"></p>
-        <pre id="content"></pre>
-    </div>
+    <!-- Results -->
+    <h2 class="success" id="successMessage"></h2>
+    <p id="errorMessage" class="error"></p>
+    <img id="featuredImage" src="" alt="Generated Featured Image" style="display:none;">
+    <pre id="contentResult">Content will appear here...</pre>
 
-    <!-- Firebase Configuration -->
+    <!-- Script -->
     <script>
-        // Firebase Configuration
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -94,77 +108,90 @@
             messagingSenderId: "604204628087",
             appId: "1:604204628087:web:29f9ada8099680af592e72"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         let openAIKey = "";
         let wordpressToken = "";
 
-        // Fetch API keys from Firestore
+        // Fetch API Keys from Firestore
         async function fetchApiKeys() {
-            try {
-                const doc = await db.collection("api_keys").doc("openai_key").get();
-                if (doc.exists) {
-                    openAIKey = doc.data().key_value;
-                    wordpressToken = doc.data().wordpress_key;
-                    console.log("API keys fetched successfully.");
-                } else {
-                    throw new Error("API keys document not found.");
-                }
-            } catch (error) {
-                document.getElementById("error").textContent = "Failed to load API keys from Firebase.";
-                console.error(error);
+            const doc = await db.collection("api_keys").doc("openai_key").get();
+            if (doc.exists) {
+                openAIKey = doc.data().key_value;
+                wordpressToken = doc.data().wordpress_key;
+            } else {
+                throw new Error("API keys not found in Firestore.");
             }
         }
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate Content and Publish Post
+        // Generate Content
         async function generateContent(event) {
             event.preventDefault();
 
-            const title = document.getElementById("title").value;
             const keywords = document.getElementById("keywords").value;
-            const imageDescription = title; // Use the title as the image description
+            const contentType = document.getElementById("content_type").value;
+            const tone = document.getElementById("tone").value;
 
-            const errorElement = document.getElementById("error");
-            const successElement = document.getElementById("success");
-            const contentElement = document.getElementById("content");
+            const contentResult = document.getElementById("contentResult");
+            const featuredImage = document.getElementById("featuredImage");
+            const successMessage = document.getElementById("successMessage");
+            const errorMessage = document.getElementById("errorMessage");
 
-            errorElement.textContent = "";
-            successElement.textContent = "Processing your request...";
-            contentElement.textContent = "";
+            contentResult.textContent = "Generating content...";
+            successMessage.textContent = "";
+            errorMessage.textContent = "";
+            featuredImage.style.display = "none";
 
             try {
-                if (!openAIKey || !wordpressToken) {
-                    throw new Error("API keys are missing. Please reload the page.");
-                }
+                if (!openAIKey || !wordpressToken) throw new Error("API keys missing.");
 
-                const response = await fetch("/api/posts", {
+                // Fetch AI Image (DALL·E)
+                const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
                     body: JSON.stringify({
-                        title,
-                        keywords,
-                        status: "publish",
-                        openAIKey,
-                        wordpressToken,
-                        imageDescription // Pass the title as image description
+                        prompt: `Generate an image representing: ${keywords}`,
+                        n: 1,
+                        size: "1024x1024",
                     }),
                 });
 
-                const result = await response.json();
+                const imageData = await imageResponse.json();
+                const imageUrl = imageData.data[0].url;
+                featuredImage.src = imageUrl;
+                featuredImage.style.display = "block";
 
-                if (!response.ok) {
-                    throw new Error(result.error || "Failed to publish the post.");
-                }
+                // Generate AI Content
+                const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [
+                            { role: "system", content: "You are a helpful content writer." },
+                            { role: "user", content: `Write a ${tone} ${contentType} based on these keywords: ${keywords}.` }
+                        ],
+                        max_tokens: 1000,
+                    }),
+                });
 
-                successElement.textContent = `Post published successfully! View it here: ${result.link}`;
-                contentElement.textContent = result.content;
+                const contentData = await chatResponse.json();
+                const generatedContent = contentData.choices[0].message.content;
+
+                // Display Results
+                contentResult.textContent = generatedContent;
+                successMessage.textContent = "Content and image generated successfully!";
             } catch (error) {
-                console.error("Error:", error.message);
-                errorElement.textContent = "Error: " + error.message;
-                successElement.textContent = "";
+                console.error("Error:", error);
+                errorMessage.textContent = "Error: " + error.message;
             }
         }
     </script>
