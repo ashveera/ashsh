@@ -7,27 +7,24 @@ module.exports = async (req, res) => {
     const { title, content, status, wordpressToken, featuredImageUrl } = req.body;
 
     try {
-        // Validation: Ensure required fields are provided
-        if (!wordpressToken) {
-            throw new Error("Missing WordPress API token.");
-        }
-        if (!featuredImageUrl) {
-            throw new Error("Missing featured image URL.");
-        }
+        // Validation: Check for required fields
+        if (!wordpressToken) throw new Error("Missing WordPress API token.");
+        if (!featuredImageUrl) throw new Error("Missing featured image URL.");
 
         let featuredImageId = null;
 
-        // Step 1: Fetch and Upload Featured Image
-        console.log("Fetching the featured image...");
+        // Step 1: Fetch and Upload the Featured Image
+        console.log("Fetching the image...");
         const imageResponse = await fetch(featuredImageUrl);
+
         if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch the featured image. Status: ${imageResponse.status}`);
+            console.error("Image Fetch Error:", await imageResponse.text());
+            throw new Error(`Failed to fetch the image. Status: ${imageResponse.status}`);
         }
 
-        console.log("Converting the image to a buffer...");
         const imageBuffer = await imageResponse.buffer();
+        console.log("Image fetched successfully. Uploading to WordPress...");
 
-        console.log("Uploading the image to WordPress...");
         const mediaResponse = await fetch(mediaUrl, {
             method: "POST",
             headers: {
@@ -40,14 +37,15 @@ module.exports = async (req, res) => {
 
         const mediaData = await mediaResponse.json();
         if (!mediaResponse.ok || !mediaData.id) {
+            console.error("Image Upload Error:", mediaData);
             throw new Error(`Failed to upload image. WordPress response: ${JSON.stringify(mediaData)}`);
         }
 
-        featuredImageId = mediaData.id; // Retrieve the uploaded image ID
+        featuredImageId = mediaData.id;
         console.log(`Image uploaded successfully. Image ID: ${featuredImageId}`);
 
-        // Step 2: Create WordPress Post with Uploaded Image
-        console.log("Creating a new WordPress post...");
+        // Step 2: Create a WordPress Post with the Image
+        console.log("Creating the WordPress post...");
         const postResponse = await fetch(postUrl, {
             method: "POST",
             headers: {
@@ -58,12 +56,13 @@ module.exports = async (req, res) => {
                 title: title || "Untitled Post",
                 content: content || "No content provided",
                 status: status || "publish",
-                featured_media: featuredImageId, // Attach the uploaded image
+                featured_media: featuredImageId,
             }),
         });
 
         const postData = await postResponse.json();
         if (!postResponse.ok) {
+            console.error("Post Creation Error:", postData);
             throw new Error(`Failed to create post. WordPress response: ${JSON.stringify(postData)}`);
         }
 
@@ -73,6 +72,7 @@ module.exports = async (req, res) => {
             message: "Post created successfully!",
             link: postData.link,
         });
+
     } catch (error) {
         console.error("Error:", error.message);
         res.status(500).json({ error: error.message });
