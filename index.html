@@ -136,20 +136,28 @@
         let openAIKey = "";
         let wordpressToken = "";
 
-        async function fetchApiKeys() {
-            try {
-                const doc = await db.collection("api_keys").doc("openai_key").get();
-                if (doc.exists) {
-                    openAIKey = doc.data().key_value;
-                    wordpressToken = doc.data().wordpress_key;
-                } else {
-                    throw new Error("API keys not found.");
-                }
-            } catch (error) {
-                console.error("Error fetching keys:", error.message);
-                alert("Failed to load API keys.");
+  async function fetchApiKeys() {
+    try {
+        const doc = await db.collection("api_keys").doc("openai_key").get();
+        if (doc.exists) {
+            const data = doc.data();
+            openAIKey = data.key_value || "";
+            wordpressToken = data.wordpress_key || "";
+
+            if (!openAIKey || !wordpressToken) {
+                throw new Error("Missing keys in Firestore document.");
             }
+
+            console.log("Keys loaded successfully.");
+        } else {
+            throw new Error("API keys document not found.");
         }
+    } catch (error) {
+        console.error("Error fetching API keys:", error.message);
+        document.getElementById("errorMessage").textContent = "Error loading API keys. Please check Firestore setup.";
+    }
+}
+
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
