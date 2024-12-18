@@ -193,16 +193,19 @@
                 contentResult.textContent = generatedContent;
 
                 // Send to Backend for WordPress Publishing
-                const postResponse = await fetch("/api/posts", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title,
-                        content: generatedContent,
-                        wordpressToken,
-                        featuredImageUrl: imageUrl
-                    }),
-                });
+ const postResponse = await fetch(postUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: Bearer ${wordpressToken},
+            },
+            body: JSON.stringify({
+                title,
+                content,
+                status: status || "publish",
+                featured_media: featuredImageId, // Attach the uploaded image
+            }),
+        });
 
                 const postData = await postResponse.json();
                 if (postData.success) {
