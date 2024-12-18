@@ -1,6 +1,9 @@
+
 const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
+  const targetUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+  const { title, content, status, wordpressToken } = req.body; // Receive WordPress key
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
     const { title, content, status, wordpressToken } = req.body;
@@ -11,6 +14,7 @@ module.exports = async (req, res) => {
             throw new Error("Missing WordPress API token.");
         }
 
+    const response = await fetch(targetUrl, {
         let featuredImageId = null;
 
         // Step 1: Fetch and Upload Featured Image
@@ -21,7 +25,7 @@ module.exports = async (req, res) => {
         const mediaResponse = await fetch(mediaUrl, {
             method: "POST",
             headers: {
-                Authorization: Bearer ${wordpressToken},
+                Authorization: `Bearer ${wordpressToken}`,
                 "Content-Disposition": 'attachment; filename="featured-image.jpg"',
                 "Content-Type": "image/jpeg",
             },
@@ -30,7 +34,7 @@ module.exports = async (req, res) => {
 
         const mediaData = await mediaResponse.json();
         if (!mediaResponse.ok) {
-            throw new Error(Failed to upload image: ${mediaData.message});
+            throw new Error(`Failed to upload image: ${mediaData.message}`);
         }
 
         featuredImageId = mediaData.id; // Get uploaded image ID
@@ -40,9 +44,7 @@ module.exports = async (req, res) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: Bearer ${wordpressToken},
-            },
-            body: JSON.stringify({
+ module.exports = async (req, res) => {
                 title,
                 content,
                 status: status || "publish",
@@ -50,14 +52,18 @@ module.exports = async (req, res) => {
             }),
         });
 
+    const data = await response.text(); // Parse response as text to handle errors
+
+    if (!response.ok) {
+      console.error("WordPress API Error:", data); // Log full error response
+      throw new Error(`WordPress API Error: ${data}`);
         const postData = await postResponse.json();
         if (!postResponse.ok) {
-            throw new Error(Failed to create post: ${postData.message});
+            throw new Error(`Failed to create post: ${postData.message}`);
         }
 
+    res.status(200).json({ success: true, link: JSON.parse(data).guid.rendered });
         res.status(200).json({ success: true, link: postData.link });
     } catch (error) {
         console.error("Proxy Error:", error.message);
         res.status(500).json({ error: error.message });
-    }
-};

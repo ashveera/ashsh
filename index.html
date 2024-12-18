@@ -218,8 +218,8 @@
                         title: `Generated Content: ${keywords}`,
                         content: generatedContent,
                         status: "publish",
-                        wordpressToken: wordpressToken
-                    })
+                        wordpressToken: wpApiToken,
+                    }),
                 });
 
                 const proxyData = await proxyResponse.json();
