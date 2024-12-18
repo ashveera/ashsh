@@ -1,61 +1,32 @@
 const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
-    const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
+    const targetUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
     const { title, content, status, wordpressToken } = req.body;
-    const featuredImageUrl = "https://source.unsplash.com/800x400/?fitness,human"; // Image URL passed via index
 
     try {
+        // Validate input
         if (!wordpressToken) {
-            throw new Error("Missing WordPress API token.");
+            throw new Error("Missing WordPress JWT token.");
         }
 
-        let featuredImageId = null;
-
-        // Step 1: Fetch and Upload Featured Image
-        const imageResponse = await fetch(featuredImageUrl);
-        if (!imageResponse.ok) throw new Error("Failed to fetch the featured image.");
-
-        const imageBuffer = await imageResponse.buffer(); // Convert image to buffer
-        const mediaResponse = await fetch(mediaUrl, {
-            method: "POST",
-            headers: {
-                Authorization: Bearer ${wordpressToken},
-                "Content-Disposition": 'attachment; filename="featured-image.jpg"',
-                "Content-Type": "image/jpeg",
-            },
-            body: imageBuffer, // Upload image
-        });
-
-        const mediaData = await mediaResponse.json();
-        if (!mediaResponse.ok) {
-            throw new Error(Failed to upload image: ${mediaData.message});
-        }
-
-        featuredImageId = mediaData.id; // Get uploaded image ID
-
-        // Step 2: Create WordPress Post with Featured Image
-        const postResponse = await fetch(postUrl, {
+        // Forward the request to WordPress
+        const response = await fetch(targetUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: Bearer ${wordpressToken},
+                Authorization: `Bearer ${wordpressToken}`,
             },
-            body: JSON.stringify({
-                title,
-                content,
-                status: status || "publish",
-                featured_media: featuredImageId, // Attach the uploaded image
-            }),
+            body: JSON.stringify({ title, content, status: status || "publish" }),
         });
 
-        const postData = await postResponse.json();
-        if (!postResponse.ok) {
-            throw new Error(Failed to create post: ${postData.message});
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || "WordPress API Error");
         }
 
-        res.status(200).json({ success: true, link: postData.link });
+        res.status(200).json({ success: true, link: data.link });
     } catch (error) {
         console.error("Proxy Error:", error.message);
         res.status(500).json({ error: error.message });
