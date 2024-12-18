@@ -30,7 +30,7 @@
             display: block;
             margin-bottom: 5px;
         }
-        input, select, button {
+        input, select, button, textarea {
             width: 100%;
             padding: 8px;
             margin-bottom: 15px;
@@ -70,6 +70,9 @@
 
     <!-- Form -->
     <form id="contentForm" onsubmit="generateContent(event)">
+        <label for="title">Post Title:</label>
+        <input type="text" id="title" placeholder="Enter post title" required>
+
         <label for="keywords">Keywords:</label>
         <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
 
@@ -88,6 +91,9 @@
             <option value="professional">Professional</option>
         </select>
 
+        <label for="audience">Target Audience:</label>
+        <input type="text" id="audience" placeholder="e.g., Beginners, Fitness Enthusiasts" required>
+
         <button type="submit">Generate Content and Image</button>
     </form>
 
@@ -100,7 +106,7 @@
 
     <!-- Firebase Configuration -->
     <script>
-     const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
             projectId: "cuppashash",
@@ -115,31 +121,31 @@
         let wordpressToken = "";
 
         // Fetch API keys from Firebase Firestore
-    async function fetchApiKeys() {
-    try {
-        const doc = await db.collection("api_keys").doc("openai_key").get();
-        if (doc.exists) {
-            openAIKey = doc.data().key_value; // Correct field name
-            wordpressToken = doc.data().wordpress_key; // Correct field name
-            console.log("OpenAI Key:", openAIKey);
-            console.log("WordPress Key:", wordpressToken);
-        } else {
-            throw new Error("API keys document not found.");
+        async function fetchApiKeys() {
+            try {
+                const doc = await db.collection("api_keys").doc("openai_key").get();
+                if (doc.exists) {
+                    openAIKey = doc.data().key_value;
+                    wordpressToken = doc.data().wordpress_key;
+                } else {
+                    throw new Error("API keys not found in Firestore.");
+                }
+            } catch (error) {
+                console.error("Error fetching API keys:", error.message);
+                document.getElementById("error").textContent = "Failed to load API keys.";
+            }
         }
-    } catch (error) {
-        console.error("Error fetching API keys:", error.message);
-        document.getElementById("error").textContent = "Failed to load API keys. Please check Firestore setup.";
-    }
-}
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
         // Generate and Publish Content
         async function generateContent(event) {
             event.preventDefault();
 
+            const title = document.getElementById("title").value;
             const keywords = document.getElementById("keywords").value;
             const contentType = document.getElementById("content_type").value;
             const tone = document.getElementById("tone").value;
+            const audience = document.getElementById("audience").value;
 
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
@@ -170,7 +176,7 @@
                 featuredImage.style.display = "block";
 
                 // Step 2: Generate AI Content
-                const prompt = `Write a ${tone} ${contentType} with the following keywords: ${keywords}.`;
+                const prompt = `Write a ${tone} ${contentType} targeting ${audience} with the following keywords: ${keywords}.`;
                 const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -194,7 +200,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
+                        title,
                         content: generatedContent,
                         status: "publish",
                         wordpressToken,
