@@ -178,13 +178,13 @@
             }
 
             try {
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
+                const prompt = Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.;
 
                 const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`,
+                        Authorization: Bearer ${chatGPTApiKey},
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
@@ -200,9 +200,9 @@
                 let contentWithImages = "";
 
                 paragraphs.forEach((paragraph, index) => {
-                    contentWithImages += `<p>${paragraph}</p>`;
+                    contentWithImages += <p>${paragraph}</p>;
                     if (includeImages === "true" && index % 2 === 0) {
-                        contentWithImages += `<img src="https://source.unsplash.com/800x400/?human,nature" alt="Image">`;
+                        contentWithImages += <img src="https://source.unsplash.com/800x400/?human,nature" alt="Image">;
                     }
                 });
 
@@ -215,7 +215,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
+                        title: Generated Content: ${keywords},
                         content: generatedContent,
                         status: "publish",
                         wordpressToken: wpApiToken,
@@ -223,7 +223,7 @@
                 });
 
                 const proxyData = await proxyResponse.json();
-                alert(`Content posted successfully! View it here: ${proxyData.link}`);
+                alert(Content posted successfully! View it here: ${proxyData.link});
 
             } catch (error) {
                 console.error("Error:", error);
