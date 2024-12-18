@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Content Generator & Publisher</title>
+    <title>Advanced AI Content Generator & Publisher</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-    <!-- Styles -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,8 +14,8 @@
             background-color: #f9f9f9;
         }
         h1 {
-            color: #333;
             text-align: center;
+            color: #333;
         }
         form {
             background-color: #fff;
@@ -47,31 +46,40 @@
         button:hover {
             background-color: #0056b3;
         }
-        pre, img {
+        img {
             display: block;
             margin: 20px auto;
             max-width: 100%;
             border-radius: 8px;
         }
+        pre {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
         .error {
             color: red;
-            font-weight: bold;
             text-align: center;
         }
         .success {
             color: green;
-            font-weight: bold;
             text-align: center;
         }
     </style>
 </head>
 <body>
-    <h1>AI Content Generator & Publisher</h1>
+    <h1>Advanced AI Content Generator & Publisher</h1>
 
-    <!-- Form -->
+    <!-- Form Section -->
     <form id="contentForm" onsubmit="generateContent(event)">
+        <label for="title">Post Title:</label>
+        <input type="text" id="title" placeholder="Enter post title" required>
+
         <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
+        <input type="text" id="keywords" placeholder="Enter keywords" required>
 
         <label for="content_type">Content Type:</label>
         <select id="content_type" required>
@@ -88,18 +96,31 @@
             <option value="professional">Professional</option>
         </select>
 
-        <button type="submit">Generate and Publish</button>
+        <label for="audience">Target Audience:</label>
+        <input type="text" id="audience" placeholder="e.g., Beginners, Experts" required>
+
+        <label for="word_count">Word Count:</label>
+        <select id="word_count">
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="2000">2000+</option>
+        </select>
+
+        <label for="seo_keywords">SEO Keywords:</label>
+        <input type="text" id="seo_keywords" placeholder="e.g., SEO tips, blogging">
+
+        <button type="submit">Generate Content and Image</button>
     </form>
 
-    <!-- Results -->
+    <!-- Results Section -->
     <h2 class="success" id="successMessage"></h2>
-    <p id="errorMessage" class="error"></p>
+    <p class="error" id="errorMessage"></p>
     <img id="featuredImage" src="" alt="Generated Featured Image" style="display:none;">
-    <pre id="contentResult">Content will appear here...</pre>
+    <h3>Generated Content:</h3>
+    <pre id="contentResult">Waiting for content...</pre>
 
-    <!-- Script -->
+    <!-- Firebase and Content Generation Script -->
     <script>
-        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -114,25 +135,28 @@
         let openAIKey = "";
         let wordpressToken = "";
 
-        // Fetch API Keys from Firestore
         async function fetchApiKeys() {
             const doc = await db.collection("api_keys").doc("openai_key").get();
             if (doc.exists) {
                 openAIKey = doc.data().key_value;
                 wordpressToken = doc.data().wordpress_key;
             } else {
-                throw new Error("API keys not found in Firestore.");
+                throw new Error("API keys not found.");
             }
         }
+
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate Content
         async function generateContent(event) {
             event.preventDefault();
 
+            const title = document.getElementById("title").value;
             const keywords = document.getElementById("keywords").value;
             const contentType = document.getElementById("content_type").value;
             const tone = document.getElementById("tone").value;
+            const audience = document.getElementById("audience").value;
+            const wordCount = document.getElementById("word_count").value;
+            const seoKeywords = document.getElementById("seo_keywords").value;
 
             const contentResult = document.getElementById("contentResult");
             const featuredImage = document.getElementById("featuredImage");
@@ -140,58 +164,38 @@
             const errorMessage = document.getElementById("errorMessage");
 
             contentResult.textContent = "Generating content...";
-            successMessage.textContent = "";
             errorMessage.textContent = "";
             featuredImage.style.display = "none";
 
             try {
-                if (!openAIKey || !wordpressToken) throw new Error("API keys missing.");
+                if (!openAIKey) throw new Error("Missing OpenAI API key.");
 
-                // Fetch AI Image (DALL·E)
+                // Generate Image (DALL·E)
                 const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
-                    },
-                    body: JSON.stringify({
-                        prompt: `Generate an image representing: ${keywords}`,
-                        n: 1,
-                        size: "1024x1024",
-                    }),
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${openAIKey}` },
+                    body: JSON.stringify({ prompt: `An image about ${title}`, n: 1, size: "1024x1024" }),
                 });
-
                 const imageData = await imageResponse.json();
                 const imageUrl = imageData.data[0].url;
                 featuredImage.src = imageUrl;
                 featuredImage.style.display = "block";
 
-                // Generate AI Content
-                const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                // Generate Content
+                const prompt = `Write a ${tone} ${contentType} for ${audience} with the title "${title}", keywords "${keywords}", SEO keywords "${seoKeywords}", and ${wordCount} words.`;
+                const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [
-                            { role: "system", content: "You are a helpful content writer." },
-                            { role: "user", content: `Write a ${tone} ${contentType} based on these keywords: ${keywords}.` }
-                        ],
-                        max_tokens: 1000,
-                    }),
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${openAIKey}` },
+                    body: JSON.stringify({ model: "gpt-3.5-turbo", messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
                 });
+                const contentData = await contentResponse.json();
+                contentResult.textContent = contentData.choices[0].message.content;
 
-                const contentData = await chatResponse.json();
-                const generatedContent = contentData.choices[0].message.content;
-
-                // Display Results
-                contentResult.textContent = generatedContent;
                 successMessage.textContent = "Content and image generated successfully!";
             } catch (error) {
-                console.error("Error:", error);
+                console.error(error);
                 errorMessage.textContent = "Error: " + error.message;
+                successMessage.textContent = "";
             }
         }
     </script>
