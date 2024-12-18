@@ -208,15 +208,18 @@ console.log(wordpressToken);
                 contentResult.textContent = generatedContent;
 
                 // Send to WordPress
-                const postResponse = await fetch("/api/posts", {
+              
+      const postResponse = await fetch("/api/posts", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${wordpressToken}` },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title,
+                        title: Generated Content: ${keywords},
                         content: generatedContent,
-                        featuredImageUrl: imageUrl
+                        status: "publish",
+                        wordpressToken: wpApiToken,
                     }),
                 });
+
 
                 const postData = await postResponse.json();
                 if (postData.success) {
