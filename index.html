@@ -215,12 +215,13 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
+                        title: title,
                         content: generatedContent,
                         status: "publish",
-                        wordpressToken: wpApiToken,
-                    }),
+                        wordpressToken: wordpressToken
+                    })
                 });
+
 
                 const proxyData = await proxyResponse.json();
                 alert(`Content posted successfully! View it here: ${proxyData.link}`);
