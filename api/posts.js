@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
         const mediaResponse = await fetch(mediaUrl, {
             method: "POST",
             headers: {
-                Authorization: Bearer ${wordpressToken},
+                Authorization: `Bearer ${wordpressToken}`,
                 "Content-Disposition": 'attachment; filename="featured-image.jpg"',
                 "Content-Type": "image/jpeg",
             },
@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
 
         const mediaData = await mediaResponse.json();
         if (!mediaResponse.ok) {
-            throw new Error(Failed to upload image: ${mediaData.message});
+            throw new Error(`Failed to upload image: ${mediaData.message}`);
         }
 
         featuredImageId = mediaData.id; // Get uploaded image ID
@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: Bearer ${wordpressToken},
+                Authorization: `Bearer ${wordpressToken}`,
             },
             body: JSON.stringify({
                 title,
@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
 
         const postData = await postResponse.json();
         if (!postResponse.ok) {
-            throw new Error(Failed to create post: ${postData.message});
+            throw new Error(`Failed to create post: ${postData.message}`);
         }
 
         res.status(200).json({ success: true, link: postData.link });
