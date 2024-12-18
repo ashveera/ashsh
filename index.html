@@ -7,7 +7,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-    <!-- Styles for Better UI -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -68,7 +67,6 @@
 <body>
     <h1>Advanced Content Generator & Publisher</h1>
 
-    <!-- Form for Content Input -->
     <form id="contentForm" onsubmit="generateContent(event)">
         <label for="keywords">Keywords:</label>
         <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
@@ -115,26 +113,22 @@
     <pre id="result">Waiting for content...</pre>
     <p id="error" class="error"></p>
 
-    <!-- Firebase and OpenAI Script -->
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID",
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         let wpApiToken = "";
         let chatGPTApiKey = "";
 
-        // Fetch API keys from Firestore
         async function fetchApiKeys() {
             try {
                 const doc = await db.collection("api_keys").doc("openai_key").get();
@@ -145,14 +139,12 @@
                     throw new Error("API keys not found in Firestore.");
                 }
             } catch (error) {
-                console.error("Error fetching API keys:", error);
-                document.getElementById("error").textContent = "Failed to load API keys. Refresh the page.";
+                document.getElementById("error").textContent = "Failed to load API keys.";
             }
         }
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
 
@@ -166,68 +158,23 @@
 
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
-            const featuredImage = document.getElementById("featuredImage");
 
-            // Reset placeholders
-            resultPlaceholder.textContent = "Generating content, please wait...";
+            resultPlaceholder.textContent = "Generating content...";
             errorPlaceholder.textContent = "";
 
-            if (!wpApiToken || !chatGPTApiKey) {
-                alert("API keys not loaded. Please refresh the page.");
-                return;
-            }
-
             try {
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
+                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
 
-                const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`,
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 1000,
-                    }),
-                });
-
-                const chatGPTData = await chatGPTResponse.json();
-                const generatedContent = chatGPTData.choices[0].message.content;
-
-                const paragraphs = generatedContent.split("\n\n");
-                let contentWithImages = "";
-
-                paragraphs.forEach((paragraph, index) => {
-                    contentWithImages += `<p>${paragraph}</p>`;
-                    if (includeImages === "true" && index % 2 === 0) {
-                        contentWithImages += `<img src="https://source.unsplash.com/800x400/?human,nature" alt="Image">`;
-                    }
-                });
-
-                resultPlaceholder.innerHTML = contentWithImages;
-
-                featuredImage.src = "https://source.unsplash.com/800x400/?fitness,human";
-
-                // Step 2: Post content to WordPress via Proxy
-                const proxyResponse = await fetch("/api/posts", {
+                const response = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
-                        content: generatedContent,
-                        status: "publish",
-                        wordpressToken: wpApiToken,
-                    }),
+                    body: JSON.stringify({ title: `Generated Content: ${keywords}`, content: prompt, status: "publish", wordpressToken: wpApiToken }),
                 });
 
-                const proxyData = await proxyResponse.json();
-                alert(`Content posted successfully! View it here: ${proxyData.link}`);
-
+                const result = await response.json();
+                resultPlaceholder.textContent = `Content Posted! View it here: ${result.link}`;
             } catch (error) {
-                console.error("Error:", error);
-                errorPlaceholder.textContent = "Error: " + error.message;
+                errorPlaceholder.textContent = `Error: ${error.message}`;
             }
         }
     </script>
