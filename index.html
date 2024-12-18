@@ -111,7 +111,7 @@
     </form>
 
     <h2>Generated Content:</h2>
-    <img id="featuredImage" src="https://source.unsplash.com/800x400/?fitness,human" alt="Featured Image">
+    <img id="featuredImage" src="" alt="Featured Image" style="display: none;">
     <pre id="result">Waiting for content...</pre>
     <p id="error" class="error"></p>
 
@@ -119,12 +119,12 @@
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         // Initialize Firebase
@@ -152,6 +152,23 @@
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
+        // Fetch with Retry Logic
+        async function fetchWithRetry(url, options, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(errorText);
+                    }
+                    return response.json();
+                } catch (error) {
+                    if (i === retries - 1) throw error; // Rethrow if retries exhausted
+                    console.warn(`Retrying... (${i + 1}/${retries})`);
+                }
+            }
+        }
+
         // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
@@ -171,16 +188,17 @@
             // Reset placeholders
             resultPlaceholder.textContent = "Generating content, please wait...";
             errorPlaceholder.textContent = "";
+            featuredImage.style.display = "none";
 
             if (!wpApiToken || !chatGPTApiKey) {
-                alert("API keys not loaded. Please refresh the page.");
+                errorPlaceholder.textContent = "API keys not loaded. Please refresh the page.";
                 return;
             }
 
             try {
                 const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
 
-                const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                const chatGPTResponse = await fetchWithRetry("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -193,25 +211,11 @@
                     }),
                 });
 
-                const chatGPTData = await chatGPTResponse.json();
-                const generatedContent = chatGPTData.choices[0].message.content;
+                const generatedContent = chatGPTResponse.choices[0].message.content;
+                resultPlaceholder.textContent = generatedContent;
 
-                const paragraphs = generatedContent.split("\n\n");
-                let contentWithImages = "";
-
-                paragraphs.forEach((paragraph, index) => {
-                    contentWithImages += `<p>${paragraph}</p>`;
-                    if (includeImages === "true" && index % 2 === 0) {
-                        contentWithImages += `<img src="https://source.unsplash.com/800x400/?human,nature" alt="Image">`;
-                    }
-                });
-
-                resultPlaceholder.innerHTML = contentWithImages;
-
-                featuredImage.src = "https://source.unsplash.com/800x400/?fitness,human";
-
-                // Step 2: Post content to WordPress via Proxy
-                const proxyResponse = await fetch("/api/posts", {
+                // Post content to WordPress via Proxy
+                const proxyResponse = await fetchWithRetry("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -222,11 +226,9 @@
                     }),
                 });
 
-                const proxyData = await proxyResponse.json();
-                alert(`Content posted successfully! View it here: ${proxyData.link}`);
-
+                alert(`Content posted successfully! View it here: ${proxyResponse.link}`);
             } catch (error) {
-                console.error("Error:", error);
+                console.error("Error:", error.message);
                 errorPlaceholder.textContent = "Error: " + error.message;
             }
         }
