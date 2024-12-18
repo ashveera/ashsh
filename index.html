@@ -107,6 +107,13 @@
         <label for="seo_keywords">SEO Keywords:</label>
         <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
+        <!-- New Image Options -->
+        <label for="featured_image_url">Featured Image URL:</label>
+        <input type="text" id="featured_image_url" placeholder="Enter image URL (optional)">
+
+        <label for="featured_image_file">Or Upload Featured Image:</label>
+        <input type="file" id="featured_image_file" accept="image/*">
+
         <button type="submit">Generate and Publish</button>
     </form>
 
@@ -119,12 +126,12 @@
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         // Initialize Firebase
@@ -152,23 +159,6 @@
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Fetch with Retry Logic
-        async function fetchWithRetry(url, options, retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(errorText);
-                    }
-                    return response.json();
-                } catch (error) {
-                    if (i === retries - 1) throw error; // Rethrow if retries exhausted
-                    console.warn(`Retrying... (${i + 1}/${retries})`);
-                }
-            }
-        }
-
         // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
@@ -180,6 +170,7 @@
             const wordCount = document.getElementById("word_count").value;
             const includeImages = document.getElementById("include_images").value;
             const seoKeywords = document.getElementById("seo_keywords").value;
+            const featuredImageUrl = document.getElementById("featured_image_url").value;
 
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
@@ -196,37 +187,45 @@
             }
 
             try {
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
+                // Handle uploaded image file
+                const imageFile = document.getElementById("featured_image_file").files[0];
+                let imageUploadUrl = featuredImageUrl || null;
 
-                const chatGPTResponse = await fetchWithRetry("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`,
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 1000,
-                    }),
-                });
+                if (imageFile) {
+                    const formData = new FormData();
+                    formData.append("file", imageFile);
 
-                const generatedContent = chatGPTResponse.choices[0].message.content;
-                resultPlaceholder.textContent = generatedContent;
+                    // Upload the image to your backend (API to handle file uploads)
+                    const uploadResponse = await fetch("/api/upload-image", {
+                        method: "POST",
+                        body: formData,
+                    });
 
-                // Post content to WordPress via Proxy
-                const proxyResponse = await fetchWithRetry("/api/posts", {
+                    const uploadData = await uploadResponse.json();
+                    if (!uploadResponse.ok) {
+                        throw new Error("Failed to upload featured image.");
+                    }
+                    imageUploadUrl = uploadData.url;
+                }
+
+                const proxyResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: generatedContent,
+                        content: "This content is generated via GPT.",
                         status: "publish",
                         wordpressToken: wpApiToken,
+                        featuredImageUrl: imageUploadUrl,
                     }),
                 });
 
-                alert(`Content posted successfully! View it here: ${proxyResponse.link}`);
+                const proxyData = await proxyResponse.json();
+                if (!proxyResponse.ok) {
+                    throw new Error(proxyData.error || "Failed to publish post.");
+                }
+
+                alert(`Content posted successfully! View it here: ${proxyData.link}`);
             } catch (error) {
                 console.error("Error:", error.message);
                 errorPlaceholder.textContent = "Error: " + error.message;
