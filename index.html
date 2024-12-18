@@ -122,7 +122,7 @@
     <!-- Firebase and Content Generation Script -->
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+            apiKey: "YOUR_FIREBASE_API_KEY",
             authDomain: "cuppashash.firebaseapp.com",
             projectId: "cuppashash",
             storageBucket: "cuppashash.appspot.com",
@@ -168,34 +168,51 @@
             featuredImage.style.display = "none";
 
             try {
-                if (!openAIKey) throw new Error("Missing OpenAI API key.");
-
                 // Generate Image (DALL·E)
                 const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${openAIKey}` },
-                    body: JSON.stringify({ prompt: `An image about ${title}`, n: 1, size: "1024x1024" }),
+                    body: JSON.stringify({ prompt: title, n: 1, size: "1024x1024" }),
                 });
                 const imageData = await imageResponse.json();
                 const imageUrl = imageData.data[0].url;
+
                 featuredImage.src = imageUrl;
                 featuredImage.style.display = "block";
 
                 // Generate Content
-                const prompt = `Write a ${tone} ${contentType} for ${audience} with the title "${title}", keywords "${keywords}", SEO keywords "${seoKeywords}", and ${wordCount} words.`;
+                const contentPrompt = `Write a ${tone} ${contentType} for ${audience} with the title "${title}", keywords "${keywords}", SEO keywords "${seoKeywords}", and ${wordCount} words.`;
                 const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${openAIKey}` },
-                    body: JSON.stringify({ model: "gpt-3.5-turbo", messages: [{ role: "user", content: prompt }], max_tokens: 1000 }),
+                    body: JSON.stringify({ model: "gpt-3.5-turbo", messages: [{ role: "user", content: contentPrompt }], max_tokens: 1000 }),
                 });
                 const contentData = await contentResponse.json();
-                contentResult.textContent = contentData.choices[0].message.content;
+                const generatedContent = contentData.choices[0].message.content;
 
-                successMessage.textContent = "Content and image generated successfully!";
+                contentResult.textContent = generatedContent;
+
+                // Send to Backend for WordPress Publishing
+                const postResponse = await fetch("/api/posts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        title,
+                        content: generatedContent,
+                        wordpressToken,
+                        featuredImageUrl: imageUrl
+                    }),
+                });
+
+                const postData = await postResponse.json();
+                if (postData.success) {
+                    successMessage.textContent = `Post published successfully! View it here: ${postData.link}`;
+                } else {
+                    throw new Error(postData.error);
+                }
             } catch (error) {
                 console.error(error);
-                errorMessage.textContent = "Error: " + error.message;
-                successMessage.textContent = "";
+                errorMessage.textContent = `Error: ${error.message}`;
             }
         }
     </script>
