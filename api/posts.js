@@ -2,10 +2,12 @@ const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
     const { title, content, status, wordpressToken } = req.body;
+
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
 
     try {
+        // Check for WordPress Token
         if (!wordpressToken) {
             throw new Error("Missing WordPress API token.");
         }
@@ -16,7 +18,7 @@ module.exports = async (req, res) => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer YOUR_OPENAI_API_KEY`,
+                Authorization: `Bearer YOUR_OPENAI_API_KEY`, // Replace with OpenAI Key
             },
             body: JSON.stringify({
                 prompt: "A human fitness workout scene, realistic, no text, high quality",
@@ -33,10 +35,11 @@ module.exports = async (req, res) => {
         const featuredImageUrl = dalleData.data[0].url;
         console.log(`Generated Image URL: ${featuredImageUrl}`);
 
-        // Step 2: Fetch the Generated Image from OpenAI URL
+        // Step 2: Fetch the Generated Image from OpenAI
+        console.log("Fetching Generated Image...");
         const imageResponse = await fetch(featuredImageUrl);
         if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch the AI-generated image. Status: ${imageResponse.status}`);
+            throw new Error(`Failed to fetch AI-generated image. Status: ${imageResponse.status}`);
         }
         const imageBuffer = await imageResponse.buffer();
 
@@ -45,7 +48,7 @@ module.exports = async (req, res) => {
         const mediaResponse = await fetch(mediaUrl, {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${wordpressToken}`,
+                Authorization: `Bearer ${wordpressToken}`, // WordPress Token
                 "Content-Disposition": 'attachment; filename="featured-image.jpg"',
                 "Content-Type": "image/jpeg",
             },
@@ -60,7 +63,7 @@ module.exports = async (req, res) => {
         const featuredImageId = mediaData.id;
         console.log(`Uploaded Image ID: ${featuredImageId}`);
 
-        // Step 4: Create WordPress Post with the Uploaded Image
+        // Step 4: Create WordPress Post with Featured Image
         console.log("Creating WordPress Post...");
         const postResponse = await fetch(postUrl, {
             method: "POST",
@@ -72,7 +75,7 @@ module.exports = async (req, res) => {
                 title,
                 content,
                 status: status || "publish",
-                featured_media: featuredImageId,
+                featured_media: featuredImageId, // Attach uploaded image as featured media
             }),
         });
 
@@ -82,7 +85,11 @@ module.exports = async (req, res) => {
         }
 
         console.log("Post created successfully!");
-        res.status(200).json({ success: true, link: postData.link });
+        res.status(200).json({
+            success: true,
+            message: "Post created successfully!",
+            link: postData.link,
+        });
 
     } catch (error) {
         console.error("Error:", error.message);

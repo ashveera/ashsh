@@ -1,98 +1,216 @@
-const fetch = require("node-fetch");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Generator & Publisher</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-module.exports = async (req, res) => {
-    const { title, content, status, wordpressToken } = req.body;
+    <!-- Styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-width: 500px;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Content Generator & Publisher</h1>
 
-    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
-    const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+    <!-- Form -->
+    <form id="contentForm" onsubmit="generateContent(event)">
+        <label for="keywords">Keywords:</label>
+        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
 
+        <label for="content_type">Content Type:</label>
+        <select id="content_type" required>
+            <option value="blog_post">Blog Post</option>
+            <option value="product_review">Product Review</option>
+            <option value="affiliate_article">Affiliate Article</option>
+        </select>
+
+        <label for="tone">Tone:</label>
+        <select id="tone">
+            <option value="formal">Formal</option>
+            <option value="casual">Casual</option>
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+        </select>
+
+        <button type="submit">Generate Content and Image</button>
+    </form>
+
+    <h2>Generated Featured Image:</h2>
+    <img id="featuredImage" src="" alt="Featured Image" style="display: none;">
+
+    <h2>Generated Content:</h2>
+    <pre id="result">Waiting for content...</pre>
+    <p id="error" class="error"></p>
+
+    <!-- Firebase Configuration -->
+    <script>
+     const firebaseConfig = {
+            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+            authDomain: "cuppashash.firebaseapp.com",
+            projectId: "cuppashash",
+            storageBucket: "cuppashash.appspot.com",
+            messagingSenderId: "604204628087",
+            appId: "1:604204628087:web:29f9ada8099680af592e72"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let openAIKey = "";
+        let wordpressToken = "";
+
+        // Fetch API keys from Firebase Firestore
+    async function fetchApiKeys() {
     try {
-        // Check for WordPress Token
-        if (!wordpressToken) {
-            throw new Error("Missing WordPress API token.");
+        const doc = await db.collection("api_keys").doc("openai_key").get();
+        if (doc.exists) {
+            openAIKey = doc.data().key_value; // Correct field name
+            wordpressToken = doc.data().wordpress_key; // Correct field name
+            console.log("OpenAI Key:", openAIKey);
+            console.log("WordPress Key:", wordpressToken);
+        } else {
+            throw new Error("API keys document not found.");
         }
-
-        // Step 1: Generate AI Image using OpenAI DALL·E API
-        console.log("Generating AI Image...");
-        const dalleResponse = await fetch("https://api.openai.com/v1/images/generations", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer YOUR_OPENAI_API_KEY`, // Replace with OpenAI Key
-            },
-            body: JSON.stringify({
-                prompt: "A human fitness workout scene, realistic, no text, high quality",
-                n: 1,
-                size: "1024x1024",
-            }),
-        });
-
-        const dalleData = await dalleResponse.json();
-        if (!dalleResponse.ok || !dalleData.data || !dalleData.data[0].url) {
-            throw new Error(`Failed to generate AI image: ${JSON.stringify(dalleData)}`);
-        }
-
-        const featuredImageUrl = dalleData.data[0].url;
-        console.log(`Generated Image URL: ${featuredImageUrl}`);
-
-        // Step 2: Fetch the Generated Image from OpenAI
-        console.log("Fetching Generated Image...");
-        const imageResponse = await fetch(featuredImageUrl);
-        if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch AI-generated image. Status: ${imageResponse.status}`);
-        }
-        const imageBuffer = await imageResponse.buffer();
-
-        // Step 3: Upload Image to WordPress Media Library
-        console.log("Uploading Image to WordPress...");
-        const mediaResponse = await fetch(mediaUrl, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${wordpressToken}`, // WordPress Token
-                "Content-Disposition": 'attachment; filename="featured-image.jpg"',
-                "Content-Type": "image/jpeg",
-            },
-            body: imageBuffer,
-        });
-
-        const mediaData = await mediaResponse.json();
-        if (!mediaResponse.ok || !mediaData.id) {
-            throw new Error(`Failed to upload image. WordPress response: ${JSON.stringify(mediaData)}`);
-        }
-
-        const featuredImageId = mediaData.id;
-        console.log(`Uploaded Image ID: ${featuredImageId}`);
-
-        // Step 4: Create WordPress Post with Featured Image
-        console.log("Creating WordPress Post...");
-        const postResponse = await fetch(postUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${wordpressToken}`,
-            },
-            body: JSON.stringify({
-                title,
-                content,
-                status: status || "publish",
-                featured_media: featuredImageId, // Attach uploaded image as featured media
-            }),
-        });
-
-        const postData = await postResponse.json();
-        if (!postResponse.ok) {
-            throw new Error(`Failed to create post. WordPress response: ${JSON.stringify(postData)}`);
-        }
-
-        console.log("Post created successfully!");
-        res.status(200).json({
-            success: true,
-            message: "Post created successfully!",
-            link: postData.link,
-        });
-
     } catch (error) {
-        console.error("Error:", error.message);
-        res.status(500).json({ error: error.message });
+        console.error("Error fetching API keys:", error.message);
+        document.getElementById("error").textContent = "Failed to load API keys. Please check Firestore setup.";
     }
-};
+}
+        document.addEventListener("DOMContentLoaded", fetchApiKeys);
+
+        // Generate and Publish Content
+        async function generateContent(event) {
+            event.preventDefault();
+
+            const keywords = document.getElementById("keywords").value;
+            const contentType = document.getElementById("content_type").value;
+            const tone = document.getElementById("tone").value;
+
+            const resultPlaceholder = document.getElementById("result");
+            const errorPlaceholder = document.getElementById("error");
+            const featuredImage = document.getElementById("featuredImage");
+
+            // Reset placeholders
+            resultPlaceholder.textContent = "Generating content and image, please wait...";
+            errorPlaceholder.textContent = "";
+            featuredImage.style.display = "none";
+
+            try {
+                if (!openAIKey || !wordpressToken) {
+                    throw new Error("API keys are missing. Please refresh the page.");
+                }
+
+                // Step 1: Generate AI Image via Backend
+                const imageResponse = await fetch("/api/generate-image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ keywords }),
+                });
+
+                const imageData = await imageResponse.json();
+                if (!imageData.url) throw new Error("Image generation failed.");
+                const imageUrl = imageData.url;
+
+                featuredImage.src = imageUrl;
+                featuredImage.style.display = "block";
+
+                // Step 2: Generate AI Content
+                const prompt = `Write a ${tone} ${contentType} with the following keywords: ${keywords}.`;
+                const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 1000,
+                    }),
+                });
+
+                const contentData = await contentResponse.json();
+                const generatedContent = contentData.choices[0].message.content;
+
+                resultPlaceholder.textContent = generatedContent;
+
+                // Step 3: Post Content to WordPress
+                const postResponse = await fetch("/api/posts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        title: `Generated Content: ${keywords}`,
+                        content: generatedContent,
+                        status: "publish",
+                        wordpressToken,
+                        featuredImageUrl: imageUrl,
+                    }),
+                });
+
+                const postData = await postResponse.json();
+                if (!postData.link) throw new Error("Failed to publish content.");
+
+                alert(`Content published successfully! View it here: ${postData.link}`);
+            } catch (error) {
+                console.error("Error:", error.message);
+                errorPlaceholder.textContent = "Error: " + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
