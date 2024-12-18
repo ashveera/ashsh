@@ -121,8 +121,9 @@
 
     <!-- Firebase and Content Generation Script -->
     <script>
-        const firebaseConfig = {
-            apiKey: "YOUR_FIREBASE_API_KEY",
+        // Firebase Configuration
+         const firebaseConfig = {
+            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
             projectId: "cuppashash",
             storageBucket: "cuppashash.appspot.com",
@@ -136,12 +137,17 @@
         let wordpressToken = "";
 
         async function fetchApiKeys() {
-            const doc = await db.collection("api_keys").doc("openai_key").get();
-            if (doc.exists) {
-                openAIKey = doc.data().key_value;
-                wordpressToken = doc.data().wordpress_key;
-            } else {
-                throw new Error("API keys not found.");
+            try {
+                const doc = await db.collection("api_keys").doc("openai_key").get();
+                if (doc.exists) {
+                    openAIKey = doc.data().key_value;
+                    wordpressToken = doc.data().wordpress_key;
+                } else {
+                    throw new Error("API keys not found.");
+                }
+            } catch (error) {
+                console.error("Error fetching keys:", error.message);
+                alert("Failed to load API keys.");
             }
         }
 
@@ -164,6 +170,7 @@
             const errorMessage = document.getElementById("errorMessage");
 
             contentResult.textContent = "Generating content...";
+            successMessage.textContent = "";
             errorMessage.textContent = "";
             featuredImage.style.display = "none";
 
@@ -192,20 +199,16 @@
 
                 contentResult.textContent = generatedContent;
 
-                // Send to Backend for WordPress Publishing
- const postResponse = await fetch(postUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: Bearer ${wordpressToken},
-            },
-            body: JSON.stringify({
-                title,
-                content,
-                status: status || "publish",
-                featured_media: featuredImageId, // Attach the uploaded image
-            }),
-        });
+                // Send to WordPress
+                const postResponse = await fetch("/api/posts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${wordpressToken}` },
+                    body: JSON.stringify({
+                        title,
+                        content: generatedContent,
+                        featuredImageUrl: imageUrl
+                    }),
+                });
 
                 const postData = await postResponse.json();
                 if (postData.success) {
@@ -214,7 +217,6 @@
                     throw new Error(postData.error);
                 }
             } catch (error) {
-                console.error(error);
                 errorMessage.textContent = `Error: ${error.message}`;
             }
         }
