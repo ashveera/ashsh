@@ -211,7 +211,7 @@
                 featuredImage.src = "https://source.unsplash.com/800x400/?fitness,human";
 
                 // Step 2: Post content to WordPress via Proxy
-                const response = await fetch("/api/posts", {
+                const proxyResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
