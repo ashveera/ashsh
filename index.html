@@ -6,7 +6,6 @@
     <title>Advanced Content Generator & Publisher</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,13 +13,36 @@
             background-color: #f9f9f9;
         }
         h1 { color: #333; }
-        form { background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 500px; }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-width: 500px;
+        }
         label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input, select, button { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
         button { background-color: #007bff; color: white; border: none; cursor: pointer; }
         button:hover { background-color: #0056b3; }
-        pre { background-color: #eee; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
-        img { display: block; margin: 20px auto; max-width: 100%; border-radius: 8px; }
+        pre {
+            background-color: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
         .error { color: red; font-weight: bold; }
     </style>
 </head>
@@ -74,6 +96,7 @@
     <p id="error" class="error"></p>
 
     <script>
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -95,7 +118,6 @@
                 if (doc.exists) {
                     chatGPTApiKey = doc.data().key_value;
                     wpApiToken = doc.data().wordpress_key;
-					console.log(wpApiToken);
                 } else {
                     throw new Error("API keys not found in Firestore.");
                 }
@@ -149,20 +171,6 @@
                 const chatGPTData = await chatGPTResponse.json();
                 const generatedContent = chatGPTData.choices[0].message.content;
 
-                const paragraphs = generatedContent.split("\n\n");
-                let contentWithImages = "";
-
-                paragraphs.forEach((paragraph, index) => {
-                    contentWithImages += `<p>${paragraph}</p>`;
-                    if (includeImages === "true" && index % 2 === 0) {
-                        contentWithImages += `<img src="https://source.unsplash.com/800x400/?human,nature" alt="Image">`;
-                    }
-                });
-
-                resultPlaceholder.innerHTML = contentWithImages;
-
-                featuredImage.src = "https://source.unsplash.com/800x400/?fitness,human";
-
                 const proxyResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -170,7 +178,9 @@
                         title: `Generated Content: ${keywords}`,
                         content: generatedContent,
                         status: "publish",
+                        keywords,
                         wordpressToken: wpApiToken,
+                        openAIKey: chatGPTApiKey,
                     }),
                 });
 
