@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
         if (!wordpressToken || !openAIKey) {
             throw new Error("Missing API tokens (WordPress or OpenAI).");
         }
-
+console.log("lkokiok":wordpressToken);
         // Step 1: Generate Image with OpenAI DALL·E
         let generatedImageUrl;
         try {
