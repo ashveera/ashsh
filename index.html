@@ -141,6 +141,8 @@
                 if (doc.exists) {
                     chatGPTApiKey = doc.data().key_value;
                     wpApiToken = doc.data().wordpress_key;
+					console.log("WordPress Token:", wpApiToken);
+
                 } else {
                     throw new Error("API keys not found in Firestore.");
                 }

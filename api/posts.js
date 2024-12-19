@@ -66,4 +66,5 @@ module.exports = async (req, res) => {
         res.status(200).json({ success: true, link: postData.link });
     } catch (error) {
         console.error("Proxy Error:", error.message);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message || "An unknown error occurred." });
+
