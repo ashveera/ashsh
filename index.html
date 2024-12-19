@@ -106,13 +106,13 @@
     <p id="error" class="error"></p>
 
     <script>
-      const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -156,7 +156,7 @@
             errorPlaceholder.textContent = "";
 
             try {
-                // Step 1: Generate Image
+                // Step 1: Start Image Generation Task
                 const imageResponse = await fetch("/api/generate-image", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -171,10 +171,29 @@
                     throw new Error(errorText);
                 }
 
-                const { imageUrl } = await imageResponse.json();
+                const { taskId } = await imageResponse.json();
+
+                // Step 2: Poll for Image Status
+                let taskStatus = "in-progress";
+                let imageUrl;
+
+                while (taskStatus === "in-progress") {
+                    const pollResponse = await fetch(`/api/generate-image/status?taskId=${taskId}`);
+                    const pollData = await pollResponse.json();
+
+                    if (pollData.status === "completed") {
+                        taskStatus = "completed";
+                        imageUrl = pollData.imageUrl;
+                    } else if (pollData.status === "error") {
+                        throw new Error(pollData.error);
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retrying
+                    }
+                }
+
                 featuredImage.src = imageUrl;
 
-                // Step 2: Create Post
+                // Step 3: Create WordPress Post
                 const postResponse = await fetch("/api/create-post", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
