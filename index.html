@@ -12,7 +12,9 @@
             margin: 20px;
             background-color: #f9f9f9;
         }
-        h1 { color: #333; }
+        h1 {
+            color: #333;
+        }
         form {
             background-color: #fff;
             padding: 20px;
@@ -20,7 +22,11 @@
             border-radius: 5px;
             max-width: 500px;
         }
-        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
         input, select, button {
             width: 100%;
             padding: 8px;
@@ -28,8 +34,15 @@
             border: 1px solid #ccc;
             border-radius: 4px;
         }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
         pre {
             background-color: #eee;
             padding: 15px;
@@ -43,7 +56,10 @@
             max-width: 100%;
             border-radius: 8px;
         }
-        .error { color: red; font-weight: bold; }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -78,12 +94,6 @@
             <option value="2000">2000+</option>
         </select>
 
-        <label for="include_images">Include Images:</label>
-        <select id="include_images">
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-        </select>
-
         <label for="seo_keywords">SEO Keywords:</label>
         <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
@@ -91,19 +101,18 @@
     </form>
 
     <h2>Generated Content:</h2>
-    <img id="featuredImage" src="https://source.unsplash.com/800x400/?fitness,human" alt="Featured Image">
+    <img id="featuredImage" src="" alt="Generated Image">
     <pre id="result">Waiting for content...</pre>
     <p id="error" class="error"></p>
 
     <script>
-        // Firebase configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -137,7 +146,6 @@
             const tone = document.getElementById("tone").value;
             const audience = document.getElementById("audience").value;
             const wordCount = document.getElementById("word_count").value;
-            const includeImages = document.getElementById("include_images").value;
             const seoKeywords = document.getElementById("seo_keywords").value;
 
             const resultPlaceholder = document.getElementById("result");
@@ -147,50 +155,45 @@
             resultPlaceholder.textContent = "Generating content, please wait...";
             errorPlaceholder.textContent = "";
 
-            if (!wpApiToken || !chatGPTApiKey) {
-                alert("API keys not loaded. Please refresh the page.");
-                return;
-            }
-
             try {
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}. Include Images: ${includeImages}.`;
-
-                const chatGPTResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                // Step 1: Generate Image
+                const imageResponse = await fetch("/api/generate-image", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`,
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 1000,
+                        keywords,
+                        openAIKey: chatGPTApiKey
                     }),
                 });
 
-                const chatGPTData = await chatGPTResponse.json();
-                const generatedContent = chatGPTData.choices[0].message.content;
+                if (!imageResponse.ok) {
+                    const errorText = await imageResponse.text();
+                    throw new Error(errorText);
+                }
 
-                const proxyResponse = await fetch("/api/posts", {
+                const { imageUrl } = await imageResponse.json();
+                featuredImage.src = imageUrl;
+
+                // Step 2: Create Post
+                const postResponse = await fetch("/api/create-post", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: generatedContent,
+                        content: `Content for ${keywords}`,
                         status: "publish",
-                        keywords,
                         wordpressToken: wpApiToken,
-                        openAIKey: chatGPTApiKey,
+                        imageUrl
                     }),
                 });
 
-                if (!proxyResponse.ok) {
-                    const errorText = await proxyResponse.text();
+                if (!postResponse.ok) {
+                    const errorText = await postResponse.text();
                     throw new Error(errorText);
                 }
 
-                const proxyData = await proxyResponse.json();
-                alert(`Content posted successfully! View it here: ${proxyData.link}`);
+                const { link } = await postResponse.json();
+                alert(`Content posted successfully! View it here: ${link}`);
             } catch (error) {
                 console.error("Error:", error);
                 errorPlaceholder.textContent = "Error: " + error.message;
