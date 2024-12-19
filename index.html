@@ -7,68 +7,26 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-    <!-- Styles for Better UI -->
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
             background-color: #f9f9f9;
         }
-        h1 {
-            color: #333;
-        }
-        form {
-            background-color: #fff;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            max-width: 500px;
-            margin-bottom: 20px;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
-        input, select, button {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        pre {
-            background-color: #eee;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        img {
-            display: block;
-            margin: 20px auto;
-            max-width: 100%;
-            border-radius: 8px;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
+        h1 { color: #333; }
+        form { background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 500px; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        input, select, button { width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        pre { background-color: #eee; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        img { display: block; margin: 20px auto; max-width: 100%; border-radius: 8px; }
+        .error { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>Advanced Content Generator & Publisher</h1>
 
-    <!-- Form for Content Input -->
     <form id="contentForm" onsubmit="generateContent(event)">
         <label for="keywords">Keywords:</label>
         <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
@@ -115,34 +73,28 @@
     <pre id="result">Waiting for content...</pre>
     <p id="error" class="error"></p>
 
-    <!-- Firebase and OpenAI Script -->
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         let wpApiToken = "";
         let chatGPTApiKey = "";
 
-        // Fetch API keys from Firestore
         async function fetchApiKeys() {
             try {
                 const doc = await db.collection("api_keys").doc("openai_key").get();
                 if (doc.exists) {
                     chatGPTApiKey = doc.data().key_value;
                     wpApiToken = doc.data().wordpress_key;
-					console.log("WordPress Token:", wpApiToken);
-
                 } else {
                     throw new Error("API keys not found in Firestore.");
                 }
@@ -154,7 +106,6 @@
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
 
@@ -170,7 +121,6 @@
             const errorPlaceholder = document.getElementById("error");
             const featuredImage = document.getElementById("featuredImage");
 
-            // Reset placeholders
             resultPlaceholder.textContent = "Generating content, please wait...";
             errorPlaceholder.textContent = "";
 
@@ -212,7 +162,6 @@
 
                 featuredImage.src = "https://source.unsplash.com/800x400/?fitness,human";
 
-                // Step 2: Post content to WordPress via Proxy
                 const proxyResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -224,9 +173,13 @@
                     }),
                 });
 
+                if (!proxyResponse.ok) {
+                    const errorText = await proxyResponse.text();
+                    throw new Error(errorText);
+                }
+
                 const proxyData = await proxyResponse.json();
                 alert(`Content posted successfully! View it here: ${proxyData.link}`);
-
             } catch (error) {
                 console.error("Error:", error);
                 errorPlaceholder.textContent = "Error: " + error.message;
