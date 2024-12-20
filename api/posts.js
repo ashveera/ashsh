@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
     const { title, content, status, wordpressToken } = req.body;
-
+console.log("wordpressToken",wordpressToken);
     try {
         if (!wordpressToken) throw new Error("Missing WordPress API token.");
 
