@@ -107,12 +107,12 @@
 
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         firebase.initializeApp(firebaseConfig);
@@ -156,26 +156,23 @@
             errorPlaceholder.textContent = "";
 
             try {
+                // Generate content using OpenAI
                 const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
-                const chatGPTResponse = await fetch("/api/generate-image", {
+                const contentResponse = await fetch("/api/generate-content", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
                 });
 
-                const { content } = await chatGPTResponse.json();
+                if (!contentResponse.ok) {
+                    throw new Error("Failed to generate content.");
+                }
 
-                const imageResponse = await fetch("/api/generate-image", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ keywords }),
-                });
-
-                const { imageUrl } = await imageResponse.json();
-
+                const { content, imageUrl } = await contentResponse.json();
                 featuredImage.src = imageUrl;
 
+                // Post to WordPress
                 const postResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -184,9 +181,13 @@
                         content,
                         status: "publish",
                         wordpressToken: wpApiToken,
-                       
+                        imageUrl,
                     }),
                 });
+
+                if (!postResponse.ok) {
+                    throw new Error("Failed to post content to WordPress.");
+                }
 
                 const { link } = await postResponse.json();
                 alert(`Content posted successfully! View it here: ${link}`);
