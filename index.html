@@ -158,7 +158,7 @@
                 // Generate content using OpenAI
                 const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
-                const contentResponse = await fetch("/api/generate-content", {
+                const contentResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
