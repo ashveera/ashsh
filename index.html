@@ -168,7 +168,7 @@ async function generateContent(event) {
         console.log("Step 1: Generating content...");
         const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
-        const contentResponse = await fetch("/api/posts", {
+        const contentResponse = await fetch("/api/generate-content", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
@@ -212,6 +212,7 @@ async function generateContent(event) {
         errorPlaceholder.textContent = "Error: " + error.message;
     }
 }
+
 
     </script>
 </body>
