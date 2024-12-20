@@ -106,95 +106,113 @@
     <p id="error" class="error"></p>
 
     <script>
-  const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.appspot.com",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+ const firebaseConfig = {
+    apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+    authDomain: "cuppashash.firebaseapp.com",
+    projectId: "cuppashash",
+    storageBucket: "cuppashash.appspot.com",
+    messagingSenderId: "604204628087",
+    appId: "1:604204628087:web:29f9ada8099680af592e72"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-        let wpApiToken = "";
-        let chatGPTApiKey = "";
+let wpApiToken = "";
+let chatGPTApiKey = "";
 
-        async function fetchApiKeys() {
-            try {
-                const doc = await db.collection("api_keys").doc("openai_key").get();
-                if (doc.exists) {
-                    chatGPTApiKey = doc.data().key_value;
-                    wpApiToken = doc.data().wordpress_key;
-                } else {
-                    throw new Error("API keys not found in Firestore.");
-                }
-            } catch (error) {
-                console.error("Error fetching API keys:", error);
-                document.getElementById("error").textContent = "Failed to load API keys. Refresh the page.";
-            }
+// Fetch API keys from Firebase
+async function fetchApiKeys() {
+    try {
+        const doc = await db.collection("api_keys").doc("openai_key").get();
+        if (doc.exists) {
+            chatGPTApiKey = doc.data().key_value;
+            wpApiToken = doc.data().wordpress_key;
+            console.log("API Keys Loaded:", { chatGPTApiKey, wpApiToken });
+        } else {
+            throw new Error("API keys not found in Firestore.");
+        }
+    } catch (error) {
+        console.error("Error fetching API keys:", error);
+        document.getElementById("error").textContent = "Failed to load API keys. Refresh the page.";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", fetchApiKeys);
+
+// Generate and Post Content
+async function generateContent(event) {
+    event.preventDefault();
+
+    const keywords = document.getElementById("keywords").value;
+    const contentType = document.getElementById("content_type").value;
+    const tone = document.getElementById("tone").value;
+    const audience = document.getElementById("audience").value;
+    const wordCount = document.getElementById("word_count").value;
+    const seoKeywords = document.getElementById("seo_keywords").value;
+
+    const resultPlaceholder = document.getElementById("result");
+    const errorPlaceholder = document.getElementById("error");
+    const featuredImage = document.getElementById("featuredImage");
+
+    // Reset UI
+    resultPlaceholder.textContent = "Generating content, please wait...";
+    errorPlaceholder.textContent = "";
+
+    if (!chatGPTApiKey || !wpApiToken) {
+        alert("API keys not loaded. Please refresh the page.");
+        return;
+    }
+
+    try {
+        // Step 1: Generate Content via OpenAI
+        console.log("Step 1: Generating content...");
+        const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
+
+        const contentResponse = await fetch("/api/generate-content", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
+        });
+
+        if (!contentResponse.ok) {
+            const errorText = await contentResponse.text();
+            throw new Error("Failed to generate content: " + errorText);
         }
 
-        document.addEventListener("DOMContentLoaded", fetchApiKeys);
+        const { content, imageUrl } = await contentResponse.json();
+        console.log("Generated Content:", content);
+        console.log("Generated Image URL:", imageUrl);
 
-        async function generateContent(event) {
-            event.preventDefault();
+        // Update the featured image
+        featuredImage.src = imageUrl;
 
-            const keywords = document.getElementById("keywords").value;
-            const contentType = document.getElementById("content_type").value;
-            const tone = document.getElementById("tone").value;
-            const audience = document.getElementById("audience").value;
-            const wordCount = document.getElementById("word_count").value;
-            const seoKeywords = document.getElementById("seo_keywords").value;
+        // Step 2: Post Content to WordPress
+        console.log("Step 2: Posting content to WordPress...");
+        const postResponse = await fetch("/api/posts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                title: `Generated Content: ${keywords}`,
+                content,
+                status: "publish",
+                wordpressToken: wpApiToken,
+                imageUrl,
+            }),
+        });
 
-            const resultPlaceholder = document.getElementById("result");
-            const errorPlaceholder = document.getElementById("error");
-            const featuredImage = document.getElementById("featuredImage");
-
-            resultPlaceholder.textContent = "Generating content, please wait...";
-            errorPlaceholder.textContent = "";
-
-            try {
-                // Generate content using OpenAI
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
-
-                const contentResponse = await fetch("/api/posts", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
-                });
-
-                if (!contentResponse.ok) {
-                    throw new Error("Failed to generate content.");
-                }
-
-                const { content, imageUrl } = await contentResponse.json();
-                featuredImage.src = imageUrl;
-
-                // Post to WordPress
-                const postResponse = await fetch("/api/posts", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
-                        content,
-                        status: "publish",
-                        wordpressToken: wpApiToken,
-                        imageUrl,
-                    }),
-                });
-
-                if (!postResponse.ok) {
-                    throw new Error("Failed to post content to WordPress.");
-                }
-
-                const { link } = await postResponse.json();
-                alert(`Content posted successfully! View it here: ${link}`);
-            } catch (error) {
-                console.error("Error:", error);
-                errorPlaceholder.textContent = "Error: " + error.message;
-            }
+        if (!postResponse.ok) {
+            const errorText = await postResponse.text();
+            throw new Error("Failed to post content to WordPress: " + errorText);
         }
+
+        const { link } = await postResponse.json();
+        alert(`Content posted successfully! View it here: ${link}`);
+    } catch (error) {
+        console.error("Error:", error);
+        errorPlaceholder.textContent = "Error: " + error.message;
+    }
+}
+
     </script>
 </body>
 </html>
