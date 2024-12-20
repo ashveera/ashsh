@@ -106,7 +106,7 @@
     <p id="error" class="error"></p>
 
     <script>
-       const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
             projectId: "cuppashash",
@@ -127,7 +127,6 @@
                 if (doc.exists) {
                     chatGPTApiKey = doc.data().key_value;
                     wpApiToken = doc.data().wordpress_key;
-					console.log(wpApiToken);
                 } else {
                     throw new Error("API keys not found in Firestore.");
                 }
@@ -157,60 +156,37 @@
             errorPlaceholder.textContent = "";
 
             try {
-                // Step 1: Start Image Generation Task
+                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
+
+                const chatGPTResponse = await fetch("/api/generate-content", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
+                });
+
+                const { content } = await chatGPTResponse.json();
+
                 const imageResponse = await fetch("/api/generate-image", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        keywords,
-                        openAIKey: chatGPTApiKey
-                    }),
+                    body: JSON.stringify({ keywords }),
                 });
 
-                if (!imageResponse.ok) {
-                    const errorText = await imageResponse.text();
-                    throw new Error(errorText);
-                }
-
-                const { taskId } = await imageResponse.json();
-
-                // Step 2: Poll for Image Status
-                let taskStatus = "in-progress";
-                let imageUrl;
-
-                while (taskStatus === "in-progress") {
-                    const pollResponse = await fetch(`/api/generate-image/status?taskId=${taskId}`);
-                    const pollData = await pollResponse.json();
-
-                    if (pollData.status === "completed") {
-                        taskStatus = "completed";
-                        imageUrl = pollData.imageUrl;
-                    } else if (pollData.status === "error") {
-                        throw new Error(pollData.error);
-                    } else {
-                        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retrying
-                    }
-                }
+                const { imageUrl } = await imageResponse.json();
 
                 featuredImage.src = imageUrl;
 
-                // Step 3: Create WordPress Post
                 const postResponse = await fetch("/api/create-post", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: `Content for ${keywords}`,
+                        content,
                         status: "publish",
                         wordpressToken: wpApiToken,
-                        imageUrl
+                        imageUrl,
                     }),
                 });
-
-                if (!postResponse.ok) {
-                    const errorText = await postResponse.text();
-                    throw new Error(errorText);
-                }
 
                 const { link } = await postResponse.json();
                 alert(`Content posted successfully! View it here: ${link}`);
