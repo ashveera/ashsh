@@ -169,10 +169,17 @@ async function generateContent(event) {
         const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
         const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt, openAIKey: chatGPTApiKey }),
-        });
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${chatGPTApiKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 1000,
+                    }),
+                });
 
         if (!contentResponse.ok) {
             const errorText = await contentResponse.text();
