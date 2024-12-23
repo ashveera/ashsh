@@ -16,12 +16,12 @@ module.exports = async (req, res) => {
 
         const { title, content, status, wordpressToken } = req.body;
 
-        // Validate WordPress token
-        if (!wordpressToken) {
-            return res.status(400).json({ error: "Missing WordPress API token" });
+        // Validate all required fields
+        if (!wordpressToken || !title || !content) {
+            return res.status(400).json({ error: "Missing required fields" });
         }
 
-        console.log("Received WordPress Token:", wordpressToken);
+        console.log("Received Request Body:", { title, content, status });
 
         // Make API request to WordPress
         const postResponse = await fetch(postUrl, {
@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
             },
             body: JSON.stringify({
                 title,
-                content,
+                content, // Ensure the content is passed correctly here
                 status: status || "publish",
             }),
         });
