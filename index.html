@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Content Generator & Publisher</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -101,10 +103,6 @@
         <label for="seo_keywords">SEO Keywords:</label>
         <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
-        <!-- WordPress Token -->
-        <label for="wordpressToken">WordPress API Token:</label>
-        <input type="password" id="wordpressToken" placeholder="Enter WordPress API token" required>
-
         <button type="submit">Generate and Publish</button>
     </form>
 
@@ -115,6 +113,42 @@
     <p id="error" class="error"></p>
 
     <script>
+        // Firebase Configuration
+  const firebaseConfig = {
+  apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+  authDomain: "cuppashash.firebaseapp.com",
+  projectId: "cuppashash",
+  storageBucket: "cuppashash.firebasestorage.app",
+  messagingSenderId: "604204628087",
+  appId: "1:604204628087:web:29f9ada8099680af592e72",
+  measurementId: "G-3RCY0TDSD0"
+};
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let openAIKey = "";
+        let wordpressToken = "";
+
+        // Fetch API keys from Firebase
+        async function fetchApiKeys() {
+            try {
+                const doc = await db.collection("api_keys").doc("keys").get();
+                if (doc.exists) {
+                    openAIKey = doc.data().openai_key;
+                    wordpressToken = doc.data().wordpress_key;
+                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
+                } else {
+                    throw new Error("API keys not found in Firestore.");
+                }
+            } catch (error) {
+                console.error("Error fetching API keys:", error);
+                document.getElementById("error").textContent = "Failed to load API keys. Refresh the page.";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchApiKeys);
+
         async function generateContent(event) {
             event.preventDefault();
 
@@ -124,7 +158,6 @@
             const audience = document.getElementById("audience").value;
             const wordCount = document.getElementById("word_count").value;
             const seoKeywords = document.getElementById("seo_keywords").value;
-            const wordpressToken = document.getElementById("wordpressToken").value;
 
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
@@ -134,6 +167,11 @@
             resultPlaceholder.textContent = "Generating content, please wait...";
             errorPlaceholder.textContent = "";
 
+            if (!openAIKey || !wordpressToken) {
+                alert("API keys not loaded. Please refresh the page.");
+                return;
+            }
+
             try {
                 // Step 1: Generate Content via OpenAI
                 const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
@@ -142,7 +180,7 @@
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer YOUR_OPENAI_API_KEY`,
+                        Authorization: `Bearer ${openAIKey}`,
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
