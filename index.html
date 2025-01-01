@@ -163,7 +163,7 @@ async function generateContent(event) {
     resultPlaceholder.textContent = "Generating content, please wait...";
     errorPlaceholder.textContent = "";
 
-    if (!chatGPTApiKey || !wpApiToken) {
+    if (!openAIKey || !wpApiToken) {
         alert("API keys not loaded. Please refresh the page.");
         return;
     }
@@ -177,7 +177,7 @@ async function generateContent(event) {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${chatGPTApiKey}`,
+                        Authorization: `Bearer ${openAIKey}`,
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
