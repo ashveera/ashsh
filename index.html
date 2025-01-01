@@ -163,7 +163,7 @@ async function generateContent(event) {
     resultPlaceholder.textContent = "Generating content, please wait...";
     errorPlaceholder.textContent = "";
 
-    if (!openAIKey || !wpApiToken) {
+    if (!openAIKey || !wordpressToken) {
         alert("API keys not loaded. Please refresh the page.");
         return;
     }
@@ -207,7 +207,7 @@ async function generateContent(event) {
                 title: `Generated Content: ${keywords}`,
                 content,
                 status: "publish",
-                wordpressToken: wpApiToken,
+                wordpressToken: wordpressToken,
                 imageUrl,
             }),
         });
