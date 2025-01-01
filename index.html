@@ -120,7 +120,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let openAIKey = "";
+let chatGPTApiKey = "";
 let wordpressToken = "";
 
 // Fetch API keys from Firebase
@@ -129,7 +129,7 @@ async function fetchApiKeys() {
     console.log("Fetching API keys from Firestore...");
     const doc = await db.collection("api_keys").doc("openai_key").get(); // Ensure the correct path
     if (doc.exists) {
-      openAIKey = doc.data().key_value; // Adjust to match your Firestore field names
+      chatGPTApiKey = doc.data().key_value; // Adjust to match your Firestore field names
       wordpressToken = doc.data().wordpress_key;
       console.log("API Keys Loaded:", { openAIKey, wordpressToken });
     } else {
