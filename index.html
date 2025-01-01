@@ -127,9 +127,9 @@ let wordpressToken = "";
 async function fetchApiKeys() {
   try {
     console.log("Fetching API keys from Firestore...");
-    const doc = await db.collection("api_keys").doc("openai_key").get(); // Ensure the correct path
+    const doc = await db.collection("api_keys").doc("openai_key").get();
     if (doc.exists) {
-      openAIKey = doc.data().key_value; // Adjust to match your Firestore field names
+      openAIKey = doc.data().key_value;
       wordpressToken = doc.data().wordpress_key;
       console.log("API Keys Loaded:", { openAIKey, wordpressToken });
     } else {
@@ -142,7 +142,6 @@ async function fetchApiKeys() {
 }
 
 document.addEventListener("DOMContentLoaded", fetchApiKeys);
-
 
 // Generate and Post Content
 async function generateContent(event) {
@@ -174,28 +173,34 @@ async function generateContent(event) {
         const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
         const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 1000,
-                    }),
-                });
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${openAIKey}`,
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [{ role: "user", content: prompt }],
+                max_tokens: 1000,
+            }),
+        });
 
         if (!contentResponse.ok) {
             const errorText = await contentResponse.text();
             throw new Error("Failed to generate content: " + errorText);
         }
 
-        const { content, imageUrl } = await contentResponse.json();
-        console.log("Generated Content:", content);
+        const contentData = await contentResponse.json();
+        const generatedContent = contentData.choices?.[0]?.message?.content;
+        const imageUrl = "https://source.unsplash.com/800x400/?fitness,human"; // Replace with actual image URL logic
+
+        if (!generatedContent) {
+            throw new Error("No content received from OpenAI API.");
+        }
+
+        console.log("Generated Content:", generatedContent);
         console.log("Generated Image URL:", imageUrl);
 
-        // Update the featured image
         featuredImage.src = imageUrl;
 
         // Step 2: Post Content to WordPress
@@ -205,9 +210,9 @@ async function generateContent(event) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 title: `Generated Content: ${keywords}`,
-                content,
+                content: generatedContent,
                 status: "publish",
-                wordpressToken: wordpressToken,
+                wordpressToken,
                 imageUrl,
             }),
         });
@@ -224,7 +229,6 @@ async function generateContent(event) {
         errorPlaceholder.textContent = "Error: " + error.message;
     }
 }
-
 
     </script>
 </body>
