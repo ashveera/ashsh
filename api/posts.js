@@ -4,24 +4,17 @@ module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
 
     try {
-        // Check for POST method
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
-        // Parse and validate request body
-        if (!req.body || Object.keys(req.body).length === 0) {
-            return res.status(400).json({ error: "Empty request body" });
-        }
+        const { title, content, status, wordpressToken, imageUrl } = req.body;
 
-        const { title, content, status, wordpressToken } = req.body;
-
-        // Validate all required fields
         if (!wordpressToken || !title || !content) {
-            return res.status(400).json({ error: "Missing required fields" });
+            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content" });
         }
 
-        console.log("Received Request Body:", { title, content, status });
+        console.log("Received Request:", { title, content, status, imageUrl });
 
         // Make API request to WordPress
         const postResponse = await fetch(postUrl, {
@@ -32,8 +25,9 @@ module.exports = async (req, res) => {
             },
             body: JSON.stringify({
                 title,
-                content, // Ensure the content is passed correctly here
+                content,
                 status: status || "publish",
+                featured_media: imageUrl ? { src: imageUrl } : undefined, // Optional featured image
             }),
         });
 
