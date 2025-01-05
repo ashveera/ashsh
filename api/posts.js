@@ -2,6 +2,7 @@ const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
         if (req.method !== "POST") {
@@ -16,7 +17,32 @@ module.exports = async (req, res) => {
 
         console.log("Received Request:", { title, content, status, imageUrl });
 
-        // Make API request to WordPress
+        let featuredMediaId;
+
+        // Step 1: Upload the image to WordPress
+        if (imageUrl) {
+            const imageResponse = await fetch(mediaUrl, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${wordpressToken}`,
+                    "Content-Type": "image/jpeg", // Update if the image format is different
+                    "Content-Disposition": `attachment; filename="featured-image.jpg"`,
+                },
+                body: await fetch(imageUrl).then((res) => res.buffer()), // Fetch the image and send its binary data
+            });
+
+            const imageData = await imageResponse.json();
+
+            if (!imageResponse.ok) {
+                console.error("Image Upload Error:", imageData);
+                return res.status(500).json({ error: imageData.message || "Image upload failed" });
+            }
+
+            featuredMediaId = imageData.id; // Get the attachment ID for the uploaded media
+            console.log("Uploaded Image ID:", featuredMediaId);
+        }
+
+        // Step 2: Create the post in WordPress
         const postResponse = await fetch(postUrl, {
             method: "POST",
             headers: {
@@ -27,7 +53,7 @@ module.exports = async (req, res) => {
                 title,
                 content,
                 status: status || "publish",
-                featured_media: imageUrl ? { src: imageUrl } : undefined, // Optional featured image
+                featured_media: featuredMediaId || undefined, // Attach the uploaded image as featured media
             }),
         });
 
