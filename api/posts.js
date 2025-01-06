@@ -1,44 +1,76 @@
+const express = require("express");
 const fetch = require("node-fetch");
 const FileType = require("file-type");
 
-module.exports = async (req, res) => {
-    const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
-    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
+const app = express();
+app.use(express.json());
+
+const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
+
+app.post("/api/generate", async (req, res) => {
+    const { keywords, contentType, tone, audience, wordCount, seoKeywords, openAIKey } = req.body;
+
+    if (!openAIKey || !keywords || !contentType || !tone || !audience || !wordCount) {
+        return res.status(400).json({ error: "Missing required fields for content generation." });
+    }
 
     try {
-        if (req.method !== "POST") {
-            return res.status(405).json({ error: "Method not allowed" });
+        const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
+
+        const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${openAIKey}`,
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [{ role: "user", content: prompt }],
+                max_tokens: 1000,
+            }),
+        });
+
+        if (!aiResponse.ok) {
+            throw new Error("Failed to generate content from OpenAI API.");
         }
 
-        const { title, content, status, wordpressToken, imageUrl } = req.body;
+        const aiData = await aiResponse.json();
+        const content = aiData.choices?.[0]?.message?.content;
+        const imageUrl = `https://source.unsplash.com/800x400/?${keywords.replace(/\s+/g, ",")}`;
 
-        if (!wordpressToken || !title || !content) {
-            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content" });
+        if (!content) {
+            throw new Error("No content received from OpenAI.");
         }
 
-        console.log("Received Request:", { title, content, status, imageUrl });
+        res.status(200).json({ content, imageUrl });
+    } catch (error) {
+        console.error("Error generating content:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 
+app.post("/api/posts", async (req, res) => {
+    const { title, content, status, wordpressToken, imageUrl } = req.body;
+
+    if (!wordpressToken || !title || !content) {
+        return res.status(400).json({ error: "Missing required fields for post creation." });
+    }
+
+    try {
         let featuredMediaId;
 
-        // Step 1: Validate and upload the image to WordPress
+        // Upload the image to WordPress if imageUrl is provided
         if (imageUrl) {
             try {
-                // Fetch the image from the provided URL
-                const imageResponse = await fetch(imageUrl);
-
-                if (!imageResponse.ok) {
-                    throw new Error(`Image fetch failed with status: ${imageResponse.status}`);
-                }
-
-                const imageBuffer = await imageResponse.buffer();
+                const imageBuffer = await fetch(imageUrl).then((res) => res.buffer());
                 const fileType = await FileType.fromBuffer(imageBuffer);
 
                 if (!fileType || !["image/jpeg", "image/png"].includes(fileType.mime)) {
                     throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
                 }
 
-                // Upload the image to WordPress
-                const uploadResponse = await fetch(mediaUrl, {
+                const imageResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
@@ -48,21 +80,19 @@ module.exports = async (req, res) => {
                     body: imageBuffer,
                 });
 
-                const uploadData = await uploadResponse.json();
+                const imageData = await imageResponse.json();
 
-                if (!uploadResponse.ok) {
-                    throw new Error(uploadData.message || "Image upload failed");
+                if (!imageResponse.ok) {
+                    throw new Error(imageData.message || "Failed to upload image.");
                 }
 
-                featuredMediaId = uploadData.id;
-                console.log("Uploaded Image ID:", featuredMediaId);
+                featuredMediaId = imageData.id;
             } catch (error) {
-                console.warn("Image upload failed. Skipping featured media.", error.message);
-                featuredMediaId = undefined; // Skip featured media if upload fails
+                console.warn("Image upload failed. Skipping featured media:", error.message);
             }
         }
 
-        // Step 2: Create the post in WordPress
+        // Create the post in WordPress
         const postResponse = await fetch(postUrl, {
             method: "POST",
             headers: {
@@ -80,13 +110,17 @@ module.exports = async (req, res) => {
         const postData = await postResponse.json();
 
         if (!postResponse.ok) {
-            throw new Error(postData.message || "Failed to create post");
+            throw new Error(postData.message || "Failed to create post.");
         }
 
-        console.log("WordPress Post Created Successfully:", postData.link);
         res.status(200).json({ success: true, link: postData.link });
     } catch (error) {
-        console.error("Error:", error.message || error);
-        res.status(500).json({ error: error.message || "Unknown server error" });
+        console.error("Error creating post:", error.message);
+        res.status(500).json({ error: error.message });
     }
-};
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});

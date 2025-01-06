@@ -112,7 +112,47 @@
     <p id="error" class="error"></p>
     <p id="loading" class="loading"></p>
 
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
     <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
+            projectId: "YOUR_FIREBASE_PROJECT_ID",
+            storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
+            appId: "YOUR_FIREBASE_APP_ID",
+            measurementId: "YOUR_FIREBASE_MEASUREMENT_ID",
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let openAIKey = "";
+        let wordpressToken = "";
+
+        // Fetch API keys from Firebase
+        async function fetchApiKeys() {
+            try {
+                console.log("Fetching API keys from Firestore...");
+                const doc = await db.collection("api_keys").doc("openai_key").get();
+                if (doc.exists) {
+                    openAIKey = doc.data().key_value;
+                    wordpressToken = doc.data().wordpress_key;
+                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
+                } else {
+                    throw new Error("API keys document does not exist in Firestore.");
+                }
+            } catch (error) {
+                console.error("Error fetching API keys:", error);
+                document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchApiKeys);
+
         async function generateContent(event) {
             event.preventDefault();
 
@@ -134,18 +174,23 @@
             errorPlaceholder.textContent = "";
             loadingIndicator.textContent = "Loading...";
 
+            if (!openAIKey || !wordpressToken) {
+                alert("API keys not loaded. Please refresh the page.");
+                return;
+            }
+
             try {
                 // Step 1: Generate Content via OpenAI API
-                const openAIResponse = await fetch("/api/generate", {
+                const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
                     body: JSON.stringify({
-                        keywords,
-                        contentType,
-                        tone,
-                        audience,
-                        wordCount,
-                        seoKeywords,
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.` }],
+                        max_tokens: 1000,
                     }),
                 });
 
@@ -153,9 +198,16 @@
                     throw new Error("Failed to generate content.");
                 }
 
-                const { content, imageUrl } = await openAIResponse.json();
+                const { choices } = await openAIResponse.json();
+                const content = choices?.[0]?.message?.content;
+                const imageUrl = `https://source.unsplash.com/800x400/?${imageKeywords}`;
+
+                if (!content) {
+                    throw new Error("No content received from OpenAI API.");
+                }
+
                 resultPlaceholder.textContent = content;
-                featuredImage.src = imageUrl || "";
+                featuredImage.src = imageUrl;
 
                 // Step 2: Publish to WordPress
                 const postResponse = await fetch("/api/posts", {
@@ -165,7 +217,7 @@
                         title: `Generated Content: ${keywords}`,
                         content,
                         status: "publish",
-                        wordpressToken: "YOUR_WORDPRESS_TOKEN_HERE",
+                        wordpressToken,
                         imageUrl,
                     }),
                 });
@@ -185,4 +237,3 @@
     </script>
 </body>
 </html>
-
