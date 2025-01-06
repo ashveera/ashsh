@@ -2,6 +2,9 @@ const fetch = require("node-fetch");
 const FileType = require("file-type");
 
 module.exports = async (req, res) => {
+    const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
+
     try {
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
@@ -13,51 +16,53 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content" });
         }
 
-        console.log("Received request:", { title, content, status, imageUrl });
+        console.log("Received Request:", { title, content, status, imageUrl });
 
         let featuredMediaId;
 
-        // Step 1: Upload the image to WordPress if imageUrl is provided
+        // Step 1: Upload the image to WordPress
         if (imageUrl) {
             try {
-                const imageBuffer = await fetch(imageUrl).then((res) => res.buffer());
+                const imageBuffer = await fetch(imageUrl).then(res => {
+                    if (!res.ok) {
+                        throw new Error(`Failed to fetch image: ${res.statusText}`);
+                    }
+                    return res.buffer();
+                });
+
                 const fileType = await FileType.fromBuffer(imageBuffer);
 
                 if (!fileType || !["image/jpeg", "image/png"].includes(fileType.mime)) {
                     throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
                 }
 
-                const mediaResponse = await fetch(
-                    "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media",
-                    {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${wordpressToken}`,
-                            "Content-Type": fileType.mime,
-                            "Content-Disposition": `attachment; filename="featured-image.${fileType.ext}"`,
-                        },
-                        body: imageBuffer,
-                    }
-                );
+                const imageResponse = await fetch(mediaUrl, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${wordpressToken}`,
+                        "Content-Type": fileType.mime,
+                        "Content-Disposition": `attachment; filename="featured-image.${fileType.ext}"`,
+                    },
+                    body: imageBuffer,
+                });
 
-                const mediaData = await mediaResponse.json();
+                const imageData = await imageResponse.json();
 
-                if (!mediaResponse.ok) {
-                    throw new Error(mediaData.message || "Image upload failed.");
+                if (!imageResponse.ok) {
+                    throw new Error(imageData.message || "Image upload failed");
                 }
 
-                featuredMediaId = mediaData.id;
-                console.log("Image uploaded with ID:", featuredMediaId);
-            } catch (error) {
-                console.warn("Image upload failed. Skipping featured media:", error.message);
-                featuredMediaId = null;
+                featuredMediaId = imageData.id; // Get the attachment ID for the uploaded media
+                console.log("Uploaded Image ID:", featuredMediaId);
+            } catch (err) {
+                console.error("Image Upload Error:", err.message);
+                return res.status(500).json({ error: err.message });
             }
         }
 
         // Step 2: Create the post in WordPress
-        const postResponse = await fetch(
-            "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts",
-            {
+        try {
+            const postResponse = await fetch(postUrl, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${wordpressToken}`,
@@ -67,21 +72,24 @@ module.exports = async (req, res) => {
                     title,
                     content,
                     status: status || "publish",
-                    featured_media: featuredMediaId || undefined,
+                    featured_media: featuredMediaId || undefined, // Attach the uploaded image as featured media
                 }),
+            });
+
+            const postData = await postResponse.json();
+
+            if (!postResponse.ok) {
+                throw new Error(postData.message || "Failed to create post");
             }
-        );
 
-        const postData = await postResponse.json();
-
-        if (!postResponse.ok) {
-            throw new Error(postData.message || "Failed to create WordPress post.");
+            console.log("WordPress Post Created Successfully:", postData.link);
+            res.status(200).json({ success: true, link: postData.link });
+        } catch (err) {
+            console.error("Post Creation Error:", err.message);
+            res.status(500).json({ error: err.message });
         }
-
-        console.log("Post created successfully:", postData.link);
-        res.status(200).json({ success: true, link: postData.link });
     } catch (error) {
-        console.error("Error processing request:", error.message);
-        res.status(500).json({ error: error.message || "Internal server error." });
+        console.error("General Error:", error.message || error);
+        res.status(500).json({ error: error.message || "Unknown server error" });
     }
 };
