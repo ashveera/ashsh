@@ -6,37 +6,44 @@ module.exports = async (req, res) => {
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
+        // Validate HTTP method
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
         const { title, content, status, wordpressToken, imageUrl } = req.body;
 
+        // Validate required fields
         if (!wordpressToken || !title || !content) {
-            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content" });
+            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
         }
 
         console.log("Received Request:", { title, content, status, imageUrl });
 
         let featuredMediaId;
 
-        // Step 1: Upload the image to WordPress
+        // Step 1: Upload the image to WordPress (if imageUrl is provided)
         if (imageUrl) {
             try {
-                const imageBuffer = await fetch(imageUrl).then(res => {
-                    if (!res.ok) {
-                        throw new Error(`Failed to fetch image: ${res.statusText}`);
-                    }
-                    return res.buffer();
-                });
+                console.log("Fetching image from URL:", imageUrl);
 
+                const imageResponse = await fetch(imageUrl);
+
+                // Check if image URL is valid
+                if (!imageResponse.ok) {
+                    throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+                }
+
+                const imageBuffer = await imageResponse.buffer();
                 const fileType = await FileType.fromBuffer(imageBuffer);
 
+                // Validate image MIME type
                 if (!fileType || !["image/jpeg", "image/png"].includes(fileType.mime)) {
                     throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
                 }
 
-                const imageResponse = await fetch(mediaUrl, {
+                console.log("Uploading image to WordPress...");
+                const uploadResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
@@ -46,22 +53,23 @@ module.exports = async (req, res) => {
                     body: imageBuffer,
                 });
 
-                const imageData = await imageResponse.json();
+                const uploadData = await uploadResponse.json();
 
-                if (!imageResponse.ok) {
-                    throw new Error(imageData.message || "Image upload failed");
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadData.message || "Image upload failed.");
                 }
 
-                featuredMediaId = imageData.id; // Get the attachment ID for the uploaded media
-                console.log("Uploaded Image ID:", featuredMediaId);
-            } catch (err) {
-                console.error("Image Upload Error:", err.message);
-                return res.status(500).json({ error: err.message });
+                featuredMediaId = uploadData.id; // Store the uploaded image ID
+                console.log("Image uploaded successfully with ID:", featuredMediaId);
+            } catch (error) {
+                console.warn("Image upload failed. Skipping featured media:", error.message);
+                featuredMediaId = null; // Skip featured image if upload fails
             }
         }
 
         // Step 2: Create the post in WordPress
         try {
+            console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
                 method: "POST",
                 headers: {
@@ -72,24 +80,24 @@ module.exports = async (req, res) => {
                     title,
                     content,
                     status: status || "publish",
-                    featured_media: featuredMediaId || undefined, // Attach the uploaded image as featured media
+                    featured_media: featuredMediaId || undefined,
                 }),
             });
 
             const postData = await postResponse.json();
 
             if (!postResponse.ok) {
-                throw new Error(postData.message || "Failed to create post");
+                throw new Error(postData.message || "Failed to create post.");
             }
 
-            console.log("WordPress Post Created Successfully:", postData.link);
+            console.log("Post created successfully:", postData.link);
             res.status(200).json({ success: true, link: postData.link });
-        } catch (err) {
-            console.error("Post Creation Error:", err.message);
-            res.status(500).json({ error: err.message });
+        } catch (error) {
+            console.error("Post creation failed:", error.message);
+            res.status(500).json({ error: error.message });
         }
     } catch (error) {
         console.error("General Error:", error.message || error);
-        res.status(500).json({ error: error.message || "Unknown server error" });
+        res.status(500).json({ error: error.message || "Unknown server error." });
     }
 };
