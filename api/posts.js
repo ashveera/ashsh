@@ -1,3 +1,4 @@
+//v2
 const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
