@@ -1,19 +1,16 @@
 const fetch = require("node-fetch");
-const FileType = require("file-type");
 
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
-        // Validate HTTP method
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
         const { title, content, status, wordpressToken, imageUrl } = req.body;
 
-        // Validate required fields
         if (!wordpressToken || !title || !content) {
             return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
         }
@@ -26,19 +23,17 @@ module.exports = async (req, res) => {
         if (imageUrl) {
             try {
                 console.log("Fetching image from URL:", imageUrl);
-
                 const imageResponse = await fetch(imageUrl);
 
-                // Check if image URL is valid
                 if (!imageResponse.ok) {
                     throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
                 }
 
                 const imageBuffer = await imageResponse.buffer();
-                const fileType = await FileType.fromBuffer(imageBuffer);
+                const imageMimeType = imageResponse.headers.get("content-type");
 
                 // Validate image MIME type
-                if (!fileType || !["image/jpeg", "image/png"].includes(fileType.mime)) {
+                if (!["image/jpeg", "image/png"].includes(imageMimeType)) {
                     throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
                 }
 
@@ -47,8 +42,8 @@ module.exports = async (req, res) => {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
-                        "Content-Type": fileType.mime,
-                        "Content-Disposition": `attachment; filename="featured-image.${fileType.ext}"`,
+                        "Content-Type": imageMimeType,
+                        "Content-Disposition": `attachment; filename="featured-image.${imageMimeType.split("/")[1]}"`,
                     },
                     body: imageBuffer,
                 });
