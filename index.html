@@ -97,9 +97,6 @@
         <label for="seo_keywords">SEO Keywords:</label>
         <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
-        <label for="image_url">Image URL (Optional):</label>
-        <input type="text" id="image_url" placeholder="Enter image URL or leave blank for AI generation">
-
         <label for="image_prompt">Image Prompt (Optional):</label>
         <input type="text" id="image_prompt" placeholder="Describe the image to generate with AI (e.g., CrossFit gym)">
 
@@ -112,7 +109,7 @@
     <p id="error" class="error"></p>
 
     <script>
-cconst firebaseConfig = {
+const firebaseConfig = {
   apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
   authDomain: "cuppashash.firebaseapp.com",
   projectId: "cuppashash",
@@ -132,14 +129,17 @@ let wordpressToken = "";
 // Fetch API keys from Firebase
 async function fetchApiKeys() {
   try {
+    console.log("Fetching API keys from Firestore...");
     const doc = await db.collection("api_keys").doc("openai_key").get();
     if (doc.exists) {
       openAIKey = doc.data().key_value;
       wordpressToken = doc.data().wordpress_key;
+      console.log("API Keys Loaded:", { openAIKey, wordpressToken });
     } else {
       throw new Error("API keys document does not exist in Firestore.");
     }
   } catch (error) {
+    console.error("Error fetching API keys:", error);
     document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
   }
 }
@@ -156,13 +156,13 @@ async function generateContent(event) {
     const audience = document.getElementById("audience").value;
     const wordCount = document.getElementById("word_count").value;
     const seoKeywords = document.getElementById("seo_keywords").value;
-    const imageUrl = document.getElementById("image_url").value;
     const imagePrompt = document.getElementById("image_prompt").value;
 
     const resultPlaceholder = document.getElementById("result");
     const errorPlaceholder = document.getElementById("error");
     const featuredImage = document.getElementById("featuredImage");
 
+    // Reset UI
     resultPlaceholder.textContent = "Generating content, please wait...";
     errorPlaceholder.textContent = "";
 
@@ -172,29 +172,65 @@ async function generateContent(event) {
     }
 
     try {
+        // Step 1: Generate Content via OpenAI
+        console.log("Step 1: Generating content...");
+        const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
+
+        const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${openAIKey}`,
+            },
+            body: JSON.stringify({
+                model: "gpt-3.5-turbo",
+                messages: [{ role: "user", content: prompt }],
+                max_tokens: 1000,
+            }),
+        });
+
+        if (!contentResponse.ok) {
+            const errorText = await contentResponse.text();
+            throw new Error("Failed to generate content: " + errorText);
+        }
+
+        const contentData = await contentResponse.json();
+        const generatedContent = contentData.choices?.[0]?.message?.content;
+
+        if (!generatedContent) {
+            throw new Error("No content received from OpenAI API.");
+        }
+
+        console.log("Generated Content:", generatedContent);
+
+        // Step 2: Post Content to WordPress
+        console.log("Step 2: Posting content to WordPress...");
         const postResponse = await fetch("/api/posts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 title: `Generated Content: ${keywords}`,
-                content: "Generated content will go here.",
+                content: generatedContent,
                 status: "publish",
                 wordpressToken,
+                imagePrompt,
                 openAIKey,
-                imageUrl: imageUrl || undefined,
-                imagePrompt: imagePrompt || undefined,
             }),
         });
 
-        const data = await postResponse.json();
-        if (!postResponse.ok) throw new Error(data.error || "Failed to post content.");
+        if (!postResponse.ok) {
+            const errorText = await postResponse.text();
+            throw new Error("Failed to post content to WordPress: " + errorText);
+        }
 
-        resultPlaceholder.textContent = `Content posted successfully! View it here: ${data.link}`;
-        featuredImage.src = imageUrl || data.generatedImageUrl || "";
+        const { link } = await postResponse.json();
+        alert(`Content posted successfully! View it here: ${link}`);
     } catch (error) {
-        errorPlaceholder.textContent = `Error: ${error.message}`;
+        console.error("Error:", error);
+        errorPlaceholder.textContent = "Error: " + error.message;
     }
 }
+
     </script>
 </body>
 </html>
