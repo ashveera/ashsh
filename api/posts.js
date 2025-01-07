@@ -1,4 +1,3 @@
-//v2
 const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
@@ -6,12 +5,14 @@ module.exports = async (req, res) => {
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
+        // Ensure the request is a POST request
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
         const { title, content, status, wordpressToken, imageUrl } = req.body;
 
+        // Validate required fields
         if (!wordpressToken || !title || !content) {
             return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
         }
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
 
         let featuredMediaId;
 
-        // Step 1: Upload the image to WordPress (if imageUrl is provided)
+        // Step 1: Handle image upload (if imageUrl is provided)
         if (imageUrl) {
             try {
                 console.log("Fetching image from URL:", imageUrl);
