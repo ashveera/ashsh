@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
-        const { title, content, status, wordpressToken, imageUrl } = req.body;
+        const { title, content, status, wordpressToken, imageUrl, openAIKey, imagePrompt } = req.body;
 
         // Validate required fields
         if (!wordpressToken || !title || !content) {
@@ -20,12 +20,43 @@ module.exports = async (req, res) => {
         console.log("Received Request:", { title, content, status, imageUrl });
 
         let featuredMediaId;
+        let generatedImageUrl = imageUrl;
 
-        // Step 1: Handle image upload (if imageUrl is provided)
-        if (imageUrl) {
+        // Step 1: Generate an image using DALL·E if no imageUrl is provided
+        if (!imageUrl && openAIKey) {
             try {
-                console.log("Fetching image from URL:", imageUrl);
-                const imageResponse = await fetch(imageUrl);
+                console.log("Generating image using DALL·E...");
+                const dalleResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${openAIKey}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        prompt: imagePrompt || "A beautiful abstract art of fitness and gym equipment",
+                        n: 1,
+                        size: "1024x1024",
+                    }),
+                });
+
+                const dalleData = await dalleResponse.json();
+
+                if (!dalleResponse.ok) {
+                    throw new Error(dalleData.error?.message || "Failed to generate image using DALL·E.");
+                }
+
+                generatedImageUrl = dalleData.data[0].url; // Get the URL of the generated image
+                console.log("Generated Image URL:", generatedImageUrl);
+            } catch (error) {
+                console.warn("DALL·E image generation failed. Proceeding without a featured image:", error.message);
+            }
+        }
+
+        // Step 2: Handle image upload (if imageUrl or generatedImageUrl is provided)
+        if (generatedImageUrl) {
+            try {
+                console.log("Fetching image from URL:", generatedImageUrl);
+                const imageResponse = await fetch(generatedImageUrl);
 
                 if (!imageResponse.ok) {
                     throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
@@ -64,7 +95,7 @@ module.exports = async (req, res) => {
             }
         }
 
-        // Step 2: Create the post in WordPress
+        // Step 3: Create the post in WordPress
         try {
             console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
