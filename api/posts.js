@@ -17,9 +17,9 @@ module.exports = async (req, res) => {
 
         console.log("Received Request:", { title, content, status, imageUrl, imagePrompt });
 
-        let featuredMediaId = null;
+        let featuredMediaId;
 
-        // Handle image upload/generation
+        // Step 1: Handle image upload/generation
         if (imageUrl) {
             try {
                 console.log("Fetching image from URL:", imageUrl);
@@ -57,6 +57,7 @@ module.exports = async (req, res) => {
                 console.log("Image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
                 console.warn("Image upload failed. Skipping featured media:", error.message);
+                featuredMediaId = null;
             }
         } else if (imagePrompt) {
             try {
@@ -108,10 +109,11 @@ module.exports = async (req, res) => {
                 console.log("Generated image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
                 console.warn("DALL·E image generation/upload failed:", error.message);
+                featuredMediaId = null;
             }
         }
 
-        // Create WordPress post
+        // Step 2: Create the post in WordPress
         try {
             console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
