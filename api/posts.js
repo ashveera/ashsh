@@ -5,58 +5,25 @@ module.exports = async (req, res) => {
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
-        // Ensure the request is a POST request
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
-        const { title, content, status, wordpressToken, imageUrl, openAIKey, imagePrompt } = req.body;
+        const { title, content, status, wordpressToken, imageUrl, imagePrompt } = req.body;
 
-        // Validate required fields
         if (!wordpressToken || !title || !content) {
             return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
         }
 
-        console.log("Received Request:", { title, content, status, imageUrl });
+        console.log("Received Request:", { title, content, status, imageUrl, imagePrompt });
 
         let featuredMediaId;
-        let generatedImageUrl = imageUrl;
 
-        // Step 1: Generate an image using DALL·E if no imageUrl is provided
-        if (!imageUrl && openAIKey) {
+        // Step 1: Handle image generation/upload
+        if (imageUrl) {
             try {
-                console.log("Generating image using DALL·E...");
-                const dalleResponse = await fetch("https://api.openai.com/v1/images/generations", {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${openAIKey}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        prompt: imagePrompt || "A beautiful abstract art of fitness and gym equipment",
-                        n: 1,
-                        size: "1024x1024",
-                    }),
-                });
-
-                const dalleData = await dalleResponse.json();
-
-                if (!dalleResponse.ok) {
-                    throw new Error(dalleData.error?.message || "Failed to generate image using DALL·E.");
-                }
-
-                generatedImageUrl = dalleData.data[0].url; // Get the URL of the generated image
-                console.log("Generated Image URL:", generatedImageUrl);
-            } catch (error) {
-                console.warn("DALL·E image generation failed. Proceeding without a featured image:", error.message);
-            }
-        }
-
-        // Step 2: Handle image upload (if imageUrl or generatedImageUrl is provided)
-        if (generatedImageUrl) {
-            try {
-                console.log("Fetching image from URL:", generatedImageUrl);
-                const imageResponse = await fetch(generatedImageUrl);
+                console.log("Fetching image from URL:", imageUrl);
+                const imageResponse = await fetch(imageUrl);
 
                 if (!imageResponse.ok) {
                     throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
@@ -65,7 +32,6 @@ module.exports = async (req, res) => {
                 const imageBuffer = await imageResponse.buffer();
                 const imageMimeType = imageResponse.headers.get("content-type");
 
-                // Validate image MIME type
                 if (!["image/jpeg", "image/png"].includes(imageMimeType)) {
                     throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
                 }
@@ -76,7 +42,7 @@ module.exports = async (req, res) => {
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
                         "Content-Type": imageMimeType,
-                        "Content-Disposition": `attachment; filename="featured-image.${imageMimeType.split("/")[1]}"`,
+                        "Content-Disposition": `attachment; filename=\"featured-image.${imageMimeType.split("/")[1]}\"`,
                     },
                     body: imageBuffer,
                 });
@@ -87,15 +53,67 @@ module.exports = async (req, res) => {
                     throw new Error(uploadData.message || "Image upload failed.");
                 }
 
-                featuredMediaId = uploadData.id; // Store the uploaded image ID
+                featuredMediaId = uploadData.id;
                 console.log("Image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
                 console.warn("Image upload failed. Skipping featured media:", error.message);
-                featuredMediaId = null; // Skip featured image if upload fails
+                featuredMediaId = null;
+            }
+        } else if (imagePrompt) {
+            try {
+                console.log("Generating image using DALL·E with prompt:", imagePrompt);
+
+                const dallEResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        prompt: imagePrompt,
+                        n: 1,
+                        size: "512x512",
+                    }),
+                });
+
+                const dallEData = await dallEResponse.json();
+
+                if (!dallEResponse.ok || !dallEData.data || !dallEData.data[0]?.url) {
+                    throw new Error("DALL·E image generation failed.");
+                }
+
+                const dallEImageUrl = dallEData.data[0].url;
+                console.log("Generated Image URL:", dallEImageUrl);
+
+                const dallEImageResponse = await fetch(dallEImageUrl);
+                const dallEImageBuffer = await dallEImageResponse.buffer();
+
+                console.log("Uploading generated image to WordPress...");
+                const uploadResponse = await fetch(mediaUrl, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${wordpressToken}`,
+                        "Content-Type": "image/png",
+                        "Content-Disposition": `attachment; filename=\"dalle-image.png\"`,
+                    },
+                    body: dallEImageBuffer,
+                });
+
+                const uploadData = await uploadResponse.json();
+
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadData.message || "Generated image upload failed.");
+                }
+
+                featuredMediaId = uploadData.id;
+                console.log("Generated image uploaded successfully with ID:", featuredMediaId);
+            } catch (error) {
+                console.warn("DALL·E image generation/upload failed:", error.message);
+                featuredMediaId = null;
             }
         }
 
-        // Step 3: Create the post in WordPress
+        // Step 2: Create the post in WordPress
         try {
             console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
