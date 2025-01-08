@@ -17,9 +17,9 @@ module.exports = async (req, res) => {
 
         console.log("Received Request:", { title, content, status, imageUrl, imagePrompt });
 
-        let featuredMediaId;
+        let featuredMediaId = null;
 
-        // Step 1: Handle image generation/upload
+        // Handle image upload/generation
         if (imageUrl) {
             try {
                 console.log("Fetching image from URL:", imageUrl);
@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
                         "Content-Type": imageMimeType,
-                        "Content-Disposition": `attachment; filename=\"featured-image.${imageMimeType.split("/")[1]}\"`,
+                        "Content-Disposition": `attachment; filename="featured-image.${imageMimeType.split("/")[1]}"`,
                     },
                     body: imageBuffer,
                 });
@@ -57,7 +57,6 @@ module.exports = async (req, res) => {
                 console.log("Image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
                 console.warn("Image upload failed. Skipping featured media:", error.message);
-                featuredMediaId = null;
             }
         } else if (imagePrompt) {
             try {
@@ -94,7 +93,7 @@ module.exports = async (req, res) => {
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
                         "Content-Type": "image/png",
-                        "Content-Disposition": `attachment; filename=\"dalle-image.png\"`,
+                        "Content-Disposition": `attachment; filename="dalle-image.png"`,
                     },
                     body: dallEImageBuffer,
                 });
@@ -109,11 +108,10 @@ module.exports = async (req, res) => {
                 console.log("Generated image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
                 console.warn("DALL·E image generation/upload failed:", error.message);
-                featuredMediaId = null;
             }
         }
 
-        // Step 2: Create the post in WordPress
+        // Create WordPress post
         try {
             console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
