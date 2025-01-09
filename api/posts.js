@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
 
         let featuredMediaId;
 
-        // Step 1: Handle image upload/generation
+        // Step 1: Upload image if `imageUrl` is provided
         if (imageUrl) {
             try {
                 console.log("Fetching image from URL:", imageUrl);
@@ -56,11 +56,13 @@ module.exports = async (req, res) => {
                 featuredMediaId = uploadData.id;
                 console.log("Image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
-                console.warn("Image upload failed. Skipping featured media:", error.message);
+                console.warn("Image upload failed:", error.message);
                 featuredMediaId = null;
             }
-        } else if (imagePrompt) {
-            // Handle image generation via OpenAI (DALL-E)
+        }
+
+        // Step 2: Handle image generation via DALL-E if `imagePrompt` is provided
+        if (!featuredMediaId && imagePrompt) {
             try {
                 console.log("Generating image using DALL·E with prompt:", imagePrompt);
 
@@ -114,7 +116,7 @@ module.exports = async (req, res) => {
             }
         }
 
-        // Step 2: Create the post in WordPress
+        // Step 3: Create the post in WordPress
         try {
             console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
@@ -138,15 +140,6 @@ module.exports = async (req, res) => {
             }
 
             console.log("Post created successfully:", postData.link);
-
-            // Verify if the featured image is linked
-            console.log("Post Data:", postData);
-            if (postData.featured_media !== featuredMediaId) {
-                console.warn(
-                    "Warning: Featured image ID in the post does not match the uploaded media ID."
-                );
-            }
-
             res.status(200).json({ success: true, link: postData.link });
         } catch (error) {
             console.error("Post creation failed:", error.message);
