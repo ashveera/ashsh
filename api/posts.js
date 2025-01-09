@@ -60,6 +60,7 @@ module.exports = async (req, res) => {
                 featuredMediaId = null;
             }
         } else if (imagePrompt) {
+            // Handle image generation via OpenAI (DALL-E)
             try {
                 console.log("Generating image using DALL·E with prompt:", imagePrompt);
 
