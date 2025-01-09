@@ -9,68 +9,66 @@ module.exports = async (req, res) => {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
-        const { title, content, status, wordpressToken, imageUrl, imagePrompt } = req.body;
+        const { title, content, status, wordpressToken, openAIKey, imagePrompt } = req.body;
 
-        if (!wordpressToken || !title || !content) {
-            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
+        if (!wordpressToken || !openAIKey || !title || !content) {
+            return res.status(400).json({
+                error: "Missing required fields: wordpressToken, openAIKey, title, or content.",
+            });
         }
 
-        console.log("Received Request:", { title, content, status, imageUrl, imagePrompt });
+        console.log("Received Request:", { title, content, status, imagePrompt });
 
         let featuredMediaId;
+        let updatedContent = "";
 
-        // Step 1: Upload image if `imageUrl` is provided
-        if (imageUrl) {
+        // Step 1: Split content into paragraphs and generate images for each
+        const paragraphs = content.split("\n").filter((para) => para.trim() !== "");
+        for (const paragraph of paragraphs) {
+            updatedContent += `<p>${paragraph}</p>`;
+
             try {
-                console.log("Fetching image from URL:", imageUrl);
-                const imageResponse = await fetch(imageUrl);
-
-                if (!imageResponse.ok) {
-                    throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-                }
-
-                const imageBuffer = await imageResponse.buffer();
-                const imageMimeType = imageResponse.headers.get("content-type");
-
-                if (!["image/jpeg", "image/png"].includes(imageMimeType)) {
-                    throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
-                }
-
-                console.log("Uploading image to WordPress...");
-                const uploadResponse = await fetch(mediaUrl, {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${wordpressToken}`,
-                        "Content-Type": imageMimeType,
-                        "Content-Disposition": `attachment; filename="featured-image.${imageMimeType.split("/")[1]}"`,
-                    },
-                    body: imageBuffer,
-                });
-
-                const uploadData = await uploadResponse.json();
-
-                if (!uploadResponse.ok) {
-                    throw new Error(uploadData.message || "Image upload failed.");
-                }
-
-                featuredMediaId = uploadData.id;
-                console.log("Image uploaded successfully with ID:", featuredMediaId);
-            } catch (error) {
-                console.warn("Image upload failed:", error.message);
-                featuredMediaId = null;
-            }
-        }
-
-        // Step 2: Handle image generation via DALL-E if `imagePrompt` is provided
-        if (!featuredMediaId && imagePrompt) {
-            try {
-                console.log("Generating image using DALL·E with prompt:", imagePrompt);
+                console.log("Generating image for paragraph:", paragraph);
 
                 const dallEResponse = await fetch("https://api.openai.com/v1/images/generations", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                        prompt: `Create an image representing: ${paragraph}`,
+                        n: 1,
+                        size: "512x512",
+                    }),
+                });
+
+                const dallEData = await dallEResponse.json();
+
+                if (!dallEResponse.ok || !dallEData.data || !dallEData.data[0]?.url) {
+                    throw new Error("DALL·E image generation failed.");
+                }
+
+                const dallEImageUrl = dallEData.data[0].url;
+                console.log("Generated Image URL:", dallEImageUrl);
+
+                // Insert the image into the content
+                updatedContent += `<img src="${dallEImageUrl}" alt="Image for paragraph" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
+            } catch (error) {
+                console.warn("DALL·E image generation failed for paragraph:", error.message);
+            }
+        }
+
+        // Step 2: Generate a featured image if `imagePrompt` is provided
+        if (imagePrompt) {
+            try {
+                console.log("Generating featured image using DALL·E with prompt:", imagePrompt);
+
+                const dallEResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
                     },
                     body: JSON.stringify({
                         prompt: imagePrompt,
@@ -86,18 +84,18 @@ module.exports = async (req, res) => {
                 }
 
                 const dallEImageUrl = dallEData.data[0].url;
-                console.log("Generated Image URL:", dallEImageUrl);
+                console.log("Generated Featured Image URL:", dallEImageUrl);
 
                 const dallEImageResponse = await fetch(dallEImageUrl);
                 const dallEImageBuffer = await dallEImageResponse.buffer();
 
-                console.log("Uploading generated image to WordPress...");
+                console.log("Uploading featured image to WordPress...");
                 const uploadResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
                         "Content-Type": "image/png",
-                        "Content-Disposition": `attachment; filename="dalle-image.png"`,
+                        "Content-Disposition": `attachment; filename="featured-image.png"`,
                     },
                     body: dallEImageBuffer,
                 });
@@ -105,13 +103,13 @@ module.exports = async (req, res) => {
                 const uploadData = await uploadResponse.json();
 
                 if (!uploadResponse.ok) {
-                    throw new Error(uploadData.message || "Generated image upload failed.");
+                    throw new Error(uploadData.message || "Generated featured image upload failed.");
                 }
 
                 featuredMediaId = uploadData.id;
-                console.log("Generated image uploaded successfully with ID:", featuredMediaId);
+                console.log("Featured image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
-                console.warn("DALL·E image generation/upload failed:", error.message);
+                console.warn("Failed to upload featured image:", error.message);
                 featuredMediaId = null;
             }
         }
@@ -127,7 +125,7 @@ module.exports = async (req, res) => {
                 },
                 body: JSON.stringify({
                     title,
-                    content,
+                    content: updatedContent,
                     status: status || "publish",
                     featured_media: featuredMediaId || undefined,
                 }),
