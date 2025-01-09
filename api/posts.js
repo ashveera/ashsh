@@ -138,6 +138,15 @@ module.exports = async (req, res) => {
             }
 
             console.log("Post created successfully:", postData.link);
+
+            // Verify if the featured image is linked
+            console.log("Post Data:", postData);
+            if (postData.featured_media !== featuredMediaId) {
+                console.warn(
+                    "Warning: Featured image ID in the post does not match the uploaded media ID."
+                );
+            }
+
             res.status(200).json({ success: true, link: postData.link });
         } catch (error) {
             console.error("Post creation failed:", error.message);
