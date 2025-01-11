@@ -131,41 +131,47 @@
 
     <script>
         // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.firebasestorage.app",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72",
-            measurementId: "G-3RCY0TDSD0",
-        };
+     // Firebase Configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+    authDomain: "cuppashash.firebaseapp.com",
+    projectId: "cuppashash",
+    storageBucket: "cuppashash.firebasestorage.app",
+    messagingSenderId: "604204628087",
+    appId: "1:604204628087:web:29f9ada8099680af592e72",
+    measurementId: "G-3RCY0TDSD0",
+};
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-        let openAIKey = "";
-        let wordpressToken = "";
+let openAIKey = "";
+let wordpressToken = "";
 
-        async function fetchApiKeys() {
-            try {
-                console.log("Fetching API keys...");
-                const doc = await db.collection("api_keys").doc("keys").get();
-                if (doc.exists) {
-                    openAIKey = doc.data().openAIKey;
-                    wordpressToken = doc.data().wordpressToken;
-                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
-                } else {
-                    throw new Error("API keys document does not exist in Firestore.");
-                }
-            } catch (error) {
-                console.error("Error fetching API keys:", error);
-                document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
-            }
+// Fetch API keys from Firestore
+async function fetchApiKeys() {
+    try {
+        console.log("Fetching API keys...");
+        // Fetch the document with the ID 'openai_key'
+        const doc = await db.collection("api_keys").doc("openai_key").get();
+
+        if (doc.exists) {
+            openAIKey = doc.data().key_value; // Extract OpenAI key from 'key_value' field
+            wordpressToken = doc.data().wordpress_key; // Extract WordPress key from 'wordpress_key' field
+            console.log("API Keys Loaded:", { openAIKey, wordpressToken });
+        } else {
+            throw new Error("API keys document does not exist in Firestore.");
         }
+    } catch (error) {
+        console.error("Error fetching API keys:", error);
+        document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
+    }
+}
 
-        document.addEventListener("DOMContentLoaded", fetchApiKeys);
+// Ensure keys are fetched on page load
+document.addEventListener("DOMContentLoaded", fetchApiKeys);
+
 
         async function generateContent(event) {
             event.preventDefault();
