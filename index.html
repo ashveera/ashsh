@@ -7,7 +7,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
-        /* UI Styling */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -92,7 +91,7 @@
         <select id="word_count">
             <option value="500">500</option>
             <option value="1000">1000</option>
-            <option value="2000">2000+</option>
+            <option value="2000+">2000+</option>
         </select>
 
         <label for="seo_keywords">SEO Keywords:</label>
@@ -110,7 +109,6 @@
     <p id="error" class="error"></p>
 
     <script>
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -121,34 +119,28 @@
             measurementId: "G-3RCY0TDSD0",
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         let openAIKey = "";
         let wordpressToken = "";
 
-        // Fetch API keys from Firebase
         async function fetchApiKeys() {
             try {
-                console.log("Fetching API keys from Firestore...");
                 const doc = await db.collection("api_keys").doc("openai_key").get();
                 if (doc.exists) {
                     openAIKey = doc.data().key_value;
                     wordpressToken = doc.data().wordpress_key;
-                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
                 } else {
                     throw new Error("API keys document does not exist in Firestore.");
                 }
             } catch (error) {
-                console.error("Error fetching API keys:", error);
                 document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
             }
         }
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
 
@@ -164,7 +156,6 @@
             const errorPlaceholder = document.getElementById("error");
             const featuredImage = document.getElementById("featuredImage");
 
-            // Reset UI
             resultPlaceholder.textContent = "Generating content, please wait...";
             errorPlaceholder.textContent = "";
 
@@ -174,10 +165,7 @@
             }
 
             try {
-                // Step 1: Generate Content via OpenAI
-                console.log("Step 1: Generating content...");
                 const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
-
                 const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -203,19 +191,40 @@
                     throw new Error("No content received from OpenAI API.");
                 }
 
-                console.log("Generated Content:", generatedContent);
+                const paragraphs = generatedContent.split("\n").filter((para) => para.trim() !== "");
+                let updatedContent = "";
 
-                // Step 2: Post Content to WordPress
-                console.log("Step 2: Posting content to WordPress...");
+                for (const paragraph of paragraphs) {
+                    updatedContent += `<p>${paragraph}</p>`;
+                    const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${openAIKey}`,
+                        },
+                        body: JSON.stringify({
+                            prompt: `Illustrate: ${paragraph}`,
+                            n: 1,
+                            size: "512x512",
+                        }),
+                    });
+
+                    const imageData = await imageResponse.json();
+                    const imageUrl = imageData.data?.[0]?.url;
+                    if (imageUrl) {
+                        updatedContent += `<img src="${imageUrl}" alt="Generated Image" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
+                        featuredImage.src = imageUrl;
+                    }
+                }
+
                 const postResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: generatedContent,
+                        content: updatedContent,
                         status: "publish",
                         wordpressToken,
-                        imagePrompt,
                         openAIKey,
                     }),
                 });
@@ -226,9 +235,8 @@
                 }
 
                 const { link } = await postResponse.json();
-                alert(`Content posted successfully! View it here: ${link}`);
+                resultPlaceholder.textContent = `Content posted successfully! View it here: ${link}`;
             } catch (error) {
-                console.error("Error:", error);
                 errorPlaceholder.textContent = "Error: " + error.message;
             }
         }

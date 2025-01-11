@@ -2,6 +2,7 @@ const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
         if (req.method !== "POST") {
@@ -16,78 +17,80 @@ module.exports = async (req, res) => {
             });
         }
 
-        console.log("Received Request:", { title, content, status });
+        console.log("Received Request:", { title, status });
 
-        let updatedContent = "";
+        // Generate featured image
+        const featureImagePrompt = "Illustrate a high-quality featured image for the article titled: " + title;
+        const featureImageResponse = await fetch("https://api.openai.com/v1/images/generations", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${openAIKey}`,
+            },
+            body: JSON.stringify({
+                prompt: featureImagePrompt,
+                n: 1,
+                size: "1024x1024",
+            }),
+        });
 
-        // Split content into paragraphs and generate images
-        const paragraphs = content.split("\n").filter((para) => para.trim() !== "");
-        for (const paragraph of paragraphs) {
-            updatedContent += `<p>${paragraph}</p>`;
+        const featureImageData = await featureImageResponse.json();
 
-            try {
-                console.log("Generating image for paragraph:", paragraph);
-
-                const dallEResponse = await fetch("https://api.openai.com/v1/images/generations", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
-                    },
-                    body: JSON.stringify({
-                        prompt: `Create an image representing: ${paragraph}`,
-                        n: 1,
-                        size: "512x512",
-                    }),
-                });
-
-                const dallEData = await dallEResponse.json();
-
-                if (!dallEResponse.ok || !dallEData.data || !dallEData.data[0]?.url) {
-                    throw new Error("DALL·E image generation failed.");
-                }
-
-                const dallEImageUrl = dallEData.data[0].url;
-                console.log("Generated Image URL:", dallEImageUrl);
-
-                // Add the image to the content
-                updatedContent += `<img src="${dallEImageUrl}" alt="Image for paragraph" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
-            } catch (error) {
-                console.warn("Image generation failed for paragraph:", error.message);
-            }
+        if (!featureImageResponse.ok || !featureImageData.data || !featureImageData.data[0]?.url) {
+            throw new Error("DALL·E featured image generation failed.");
         }
 
-        console.log("Updated Content with Images:", updatedContent);
+        const featureImageUrl = featureImageData.data[0].url;
+        console.log("Generated Featured Image URL:", featureImageUrl);
 
-        // Create the post in WordPress
-        try {
-            const postResponse = await fetch(postUrl, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${wordpressToken}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    title,
-                    content: updatedContent,
-                    status: status || "publish",
-                }),
-            });
+        // Download the feature image for upload to WordPress
+        const imageResponse = await fetch(featureImageUrl);
+        const imageBuffer = await imageResponse.buffer();
 
-            const postData = await postResponse.json();
+        const uploadedMediaResponse = await fetch(mediaUrl, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${wordpressToken}`,
+                "Content-Disposition": `attachment; filename="feature-image.jpg"`,
+                "Content-Type": "image/jpeg",
+            },
+            body: imageBuffer,
+        });
 
-            if (!postResponse.ok) {
-                throw new Error(postData.message || "Failed to create post.");
-            }
+        const uploadedMediaData = await uploadedMediaResponse.json();
 
-            console.log("Post created successfully:", postData.link);
-            res.status(200).json({ success: true, link: postData.link });
-        } catch (error) {
-            console.error("Post creation failed:", error.message);
-            res.status(500).json({ error: error.message });
+        if (!uploadedMediaResponse.ok || !uploadedMediaData.id) {
+            throw new Error("Failed to upload feature image to WordPress.");
         }
+
+        const featureImageId = uploadedMediaData.id;
+        console.log("Feature Image uploaded successfully, ID:", featureImageId);
+
+        // Create the post in WordPress with the featured image
+        const postResponse = await fetch(postUrl, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${wordpressToken}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                title,
+                content,
+                status: status || "publish",
+                featured_media: featureImageId, // Attach the featured image
+            }),
+        });
+
+        const postData = await postResponse.json();
+
+        if (!postResponse.ok) {
+            throw new Error(postData.message || "Failed to create post.");
+        }
+
+        console.log("Post created successfully:", postData.link);
+        res.status(200).json({ success: true, link: postData.link });
     } catch (error) {
-        console.error("General Error:", error.message || error);
+        console.error("Error:", error.message || error);
         res.status(500).json({ error: error.message || "Unknown server error." });
     }
 };
