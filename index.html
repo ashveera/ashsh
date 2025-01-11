@@ -84,11 +84,9 @@
     <div class="container">
         <h1>Content Generator & Publisher</h1>
         <form id="contentForm" onsubmit="generateContent(event)">
-            <!-- Keywords -->
             <label for="keywords">Keywords:</label>
             <input type="text" id="keywords" placeholder="Enter keywords (e.g., fitness tips)" required />
 
-            <!-- Content Type -->
             <label for="content_type">Content Type:</label>
             <select id="content_type" required>
                 <option value="blog_post">Blog Post</option>
@@ -98,7 +96,6 @@
                 <option value="listicle">Listicle</option>
             </select>
 
-            <!-- Tone -->
             <label for="tone">Tone:</label>
             <select id="tone">
                 <option value="formal">Formal</option>
@@ -108,11 +105,9 @@
                 <option value="witty">Witty</option>
             </select>
 
-            <!-- Target Audience -->
             <label for="audience">Target Audience:</label>
             <input type="text" id="audience" placeholder="E.g., beginners, tech enthusiasts" required />
 
-            <!-- Word Count -->
             <label for="word_count">Word Count:</label>
             <select id="word_count">
                 <option value="500">500 Words</option>
@@ -121,26 +116,21 @@
                 <option value="2000">2000+ Words</option>
             </select>
 
-            <!-- SEO Keywords -->
             <label for="seo_keywords">SEO Keywords:</label>
             <textarea id="seo_keywords" rows="3" placeholder="Enter SEO keywords, separated by commas"></textarea>
 
-            <!-- Image Prompt -->
             <label for="image_prompt">Image Prompt (Optional):</label>
             <input type="text" id="image_prompt" placeholder="Describe the image to generate (e.g., CrossFit gym)" />
 
-            <!-- Generate & Publish Button -->
             <button type="submit">Generate and Publish</button>
         </form>
 
-        <!-- Results -->
         <div class="result" id="result" style="display: none;"></div>
         <p class="error" id="error" style="display: none;"></p>
     </div>
 
     <script>
         // Firebase Configuration
-            // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -158,9 +148,9 @@
         let openAIKey = "";
         let wordpressToken = "";
 
-        // Fetch API keys from Firebase
         async function fetchApiKeys() {
             try {
+                console.log("Fetching API keys...");
                 const doc = await db.collection("api_keys").doc("keys").get();
                 if (doc.exists) {
                     openAIKey = doc.data().openAIKey;
@@ -177,7 +167,6 @@
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate Content Function
         async function generateContent(event) {
             event.preventDefault();
 
@@ -192,10 +181,8 @@
             const resultDiv = document.getElementById("result");
             const errorDiv = document.getElementById("error");
 
-            // Reset UI
             resultDiv.style.display = "none";
             errorDiv.style.display = "none";
-            resultDiv.textContent = "Generating content, please wait...";
 
             if (!openAIKey || !wordpressToken) {
                 alert("API keys not loaded. Please refresh the page.");
@@ -203,7 +190,6 @@
             }
 
             try {
-                // Call the backend API to create the post
                 const createPostResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -215,28 +201,12 @@
                 });
 
                 const createPostData = await createPostResponse.json();
-
                 if (!createPostResponse.ok) {
                     throw new Error(createPostData.error);
                 }
 
-                const { postId, link } = createPostData;
                 resultDiv.style.display = "block";
-                resultDiv.textContent = `Post created successfully! View it here: ${link}`;
-
-                // Call the backend API to process images
-                await fetch("/api/processImages", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        postId,
-                        content: `Generated content using keywords: ${keywords}.`,
-                        wordpressToken,
-                        openAIKey,
-                    }),
-                });
-
-                alert("Post with images is being processed. The post is live at " + link);
+                resultDiv.textContent = `Post created successfully! View it here: ${createPostData.link}`;
             } catch (error) {
                 errorDiv.style.display = "block";
                 errorDiv.textContent = "Error: " + error.message;
