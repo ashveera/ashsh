@@ -19,7 +19,72 @@ module.exports = async (req, res) => {
 
         console.log("Received Request:", { title, status });
 
-        // Create the initial post on WordPress without images
+        // Split content into paragraphs
+        const paragraphs = content.split("\n").filter((para) => para.trim() !== "");
+        let updatedContent = "";
+
+        // Generate images for each paragraph and add to content
+        for (const paragraph of paragraphs) {
+            updatedContent += `<p>${paragraph}</p>`;
+
+            try {
+                console.log("Generating image for paragraph:", paragraph);
+
+                // Generate image using OpenAI DALL·E
+                const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                        prompt: `Create an illustration for: ${paragraph}`,
+                        n: 1,
+                        size: "512x512",
+                    }),
+                });
+
+                const imageData = await imageResponse.json();
+
+                if (!imageResponse.ok || !imageData.data || !imageData.data[0]?.url) {
+                    throw new Error("Image generation failed.");
+                }
+
+                const imageUrl = imageData.data[0].url;
+                console.log("Generated Image URL:", imageUrl);
+
+                // Download the generated image
+                const imageDownloadResponse = await fetch(imageUrl);
+                const imageBuffer = await imageDownloadResponse.buffer();
+
+                // Upload the image to WordPress
+                const uploadedMediaResponse = await fetch(mediaUrl, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${wordpressToken}`,
+                        "Content-Disposition": `attachment; filename="paragraph-image.jpg"`,
+                        "Content-Type": "image/jpeg",
+                    },
+                    body: imageBuffer,
+                });
+
+                const uploadedMediaData = await uploadedMediaResponse.json();
+
+                if (!uploadedMediaResponse.ok || !uploadedMediaData.id) {
+                    throw new Error("Failed to upload image to WordPress.");
+                }
+
+                const uploadedImageUrl = uploadedMediaData.source_url;
+                console.log("Uploaded Image URL:", uploadedImageUrl);
+
+                // Add the image to the content
+                updatedContent += `<img src="${uploadedImageUrl}" alt="Generated Image" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
+            } catch (error) {
+                console.warn("Image generation or upload failed for paragraph:", error.message);
+            }
+        }
+
+        // Create the post in WordPress with updated content and images
         const postResponse = await fetch(postUrl, {
             method: "POST",
             headers: {
@@ -28,8 +93,8 @@ module.exports = async (req, res) => {
             },
             body: JSON.stringify({
                 title,
-                content, // Add the raw content here
-                status: status || "draft", // Save as draft initially
+                content: updatedContent,
+                status: status || "publish",
             }),
         });
 
@@ -39,73 +104,8 @@ module.exports = async (req, res) => {
             throw new Error(postData.message || "Failed to create post.");
         }
 
-        const postId = postData.id;
-        console.log("Post created successfully with ID:", postId);
-
-        // Respond to the user immediately to avoid timeout
+        console.log("Post created successfully:", postData.link);
         res.status(200).json({ success: true, link: postData.link });
-
-        // Start generating images asynchronously for the paragraphs
-        const paragraphs = content.split("\n").filter((para) => para.trim() !== "");
-
-        for (const paragraph of paragraphs) {
-            try {
-                const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
-                    },
-                    body: JSON.stringify({
-                        prompt: `Illustrate: ${paragraph}`,
-                        n: 1,
-                        size: "512x512",
-                    }),
-                });
-
-                const imageData = await imageResponse.json();
-                const imageUrl = imageData.data?.[0]?.url;
-
-                if (imageUrl) {
-                    // Download the image
-                    const imageDownloadResponse = await fetch(imageUrl);
-                    const imageBuffer = await imageDownloadResponse.buffer();
-
-                    // Upload the image to WordPress
-                    const uploadedMediaResponse = await fetch(mediaUrl, {
-                        method: "POST",
-                        headers: {
-                            Authorization: `Bearer ${wordpressToken}`,
-                            "Content-Disposition": `attachment; filename="paragraph-image.jpg"`,
-                            "Content-Type": "image/jpeg",
-                        },
-                        body: imageBuffer,
-                    });
-
-                    const uploadedMediaData = await uploadedMediaResponse.json();
-
-                    if (uploadedMediaResponse.ok && uploadedMediaData.id) {
-                        console.log(
-                            `Image for paragraph uploaded successfully with ID: ${uploadedMediaData.id}`
-                        );
-
-                        // Update the post content with the image
-                        await fetch(`${postUrl}/${postId}`, {
-                            method: "POST",
-                            headers: {
-                                Authorization: `Bearer ${wordpressToken}`,
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({
-                                content: `${content}<img src="${uploadedMediaData.source_url}" alt="Generated Image">`,
-                            }),
-                        });
-                    }
-                }
-            } catch (error) {
-                console.warn("Image generation or upload failed for paragraph:", error.message);
-            }
-        }
     } catch (error) {
         console.error("Error:", error.message || error);
         res.status(500).json({ error: error.message || "Unknown server error." });
