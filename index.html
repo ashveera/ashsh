@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Content Generator & Publisher</title>
+    <title>Content Generator & Publisher</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
@@ -84,9 +84,11 @@
     <div class="container">
         <h1>Content Generator & Publisher</h1>
         <form id="contentForm" onsubmit="generateContent(event)">
+            <!-- Keywords -->
             <label for="keywords">Keywords:</label>
             <input type="text" id="keywords" placeholder="Enter keywords (e.g., fitness tips)" required />
 
+            <!-- Content Type -->
             <label for="content_type">Content Type:</label>
             <select id="content_type" required>
                 <option value="blog_post">Blog Post</option>
@@ -96,6 +98,7 @@
                 <option value="listicle">Listicle</option>
             </select>
 
+            <!-- Tone -->
             <label for="tone">Tone:</label>
             <select id="tone">
                 <option value="formal">Formal</option>
@@ -105,9 +108,11 @@
                 <option value="witty">Witty</option>
             </select>
 
+            <!-- Target Audience -->
             <label for="audience">Target Audience:</label>
             <input type="text" id="audience" placeholder="E.g., beginners, tech enthusiasts" required />
 
+            <!-- Word Count -->
             <label for="word_count">Word Count:</label>
             <select id="word_count">
                 <option value="500">500 Words</option>
@@ -116,63 +121,63 @@
                 <option value="2000">2000+ Words</option>
             </select>
 
+            <!-- SEO Keywords -->
             <label for="seo_keywords">SEO Keywords:</label>
             <textarea id="seo_keywords" rows="3" placeholder="Enter SEO keywords, separated by commas"></textarea>
 
+            <!-- Image Prompt -->
             <label for="image_prompt">Image Prompt (Optional):</label>
             <input type="text" id="image_prompt" placeholder="Describe the image to generate (e.g., CrossFit gym)" />
 
+            <!-- Generate & Publish Button -->
             <button type="submit">Generate and Publish</button>
         </form>
 
+        <!-- Results -->
         <div class="result" id="result" style="display: none;"></div>
         <p class="error" id="error" style="display: none;"></p>
     </div>
 
     <script>
         // Firebase Configuration
-     // Firebase Configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-    authDomain: "cuppashash.firebaseapp.com",
-    projectId: "cuppashash",
-    storageBucket: "cuppashash.firebasestorage.app",
-    messagingSenderId: "604204628087",
-    appId: "1:604204628087:web:29f9ada8099680af592e72",
-    measurementId: "G-3RCY0TDSD0",
-};
+        const firebaseConfig = {
+            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
+            authDomain: "cuppashash.firebaseapp.com",
+            projectId: "cuppashash",
+            storageBucket: "cuppashash.firebasestorage.app",
+            messagingSenderId: "604204628087",
+            appId: "1:604204628087:web:29f9ada8099680af592e72",
+            measurementId: "G-3RCY0TDSD0",
+        };
 
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-let openAIKey = "";
-let wordpressToken = "";
+        let openAIKey = "";
+        let wordpressToken = "";
 
-// Fetch API keys from Firestore
-async function fetchApiKeys() {
-    try {
-        console.log("Fetching API keys...");
-        // Fetch the document with the ID 'openai_key'
-        const doc = await db.collection("api_keys").doc("openai_key").get();
-
-        if (doc.exists) {
-            openAIKey = doc.data().key_value; // Extract OpenAI key from 'key_value' field
-            wordpressToken = doc.data().wordpress_key; // Extract WordPress key from 'wordpress_key' field
-            console.log("API Keys Loaded:", { openAIKey, wordpressToken });
-        } else {
-            throw new Error("API keys document does not exist in Firestore.");
+        // Fetch API keys from Firebase
+        async function fetchApiKeys() {
+            try {
+                console.log("Fetching API keys...");
+                const doc = await db.collection("api_keys").doc("openai_key").get();
+                if (doc.exists) {
+                    openAIKey = doc.data().key_value; // Extract OpenAI key from 'key_value' field
+                    wordpressToken = doc.data().wordpress_key; // Extract WordPress key from 'wordpress_key' field
+                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
+                } else {
+                    throw new Error("API keys document does not exist in Firestore.");
+                }
+            } catch (error) {
+                console.error("Error fetching API keys:", error);
+                document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
+            }
         }
-    } catch (error) {
-        console.error("Error fetching API keys:", error);
-        document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
-    }
-}
 
-// Ensure keys are fetched on page load
-document.addEventListener("DOMContentLoaded", fetchApiKeys);
+        document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-
+        // Generate Content Function
         async function generateContent(event) {
             event.preventDefault();
 
@@ -187,6 +192,7 @@ document.addEventListener("DOMContentLoaded", fetchApiKeys);
             const resultDiv = document.getElementById("result");
             const errorDiv = document.getElementById("error");
 
+            // Reset UI
             resultDiv.style.display = "none";
             errorDiv.style.display = "none";
 
@@ -196,24 +202,31 @@ document.addEventListener("DOMContentLoaded", fetchApiKeys);
             }
 
             try {
-                const createPostResponse = await fetch("/api/posts", {
+                // Prepare the prompt
+                const prompt = `Write a ${tone} ${contentType} for ${audience} with keywords: ${keywords}. Include SEO: ${seoKeywords}. Word Count: ${wordCount}.`;
+
+                // Call the backend API to create the post
+                const response = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: `Write a ${tone} ${contentType} for ${audience} with ${keywords}. Include SEO: ${seoKeywords}. Word Count: ${wordCount}.`,
+                        content: prompt,
                         wordpressToken,
+                        openAIKey,
                     }),
                 });
 
-                const createPostData = await createPostResponse.json();
-                if (!createPostResponse.ok) {
-                    throw new Error(createPostData.error);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
                 }
 
                 resultDiv.style.display = "block";
-                resultDiv.textContent = `Post created successfully! View it here: ${createPostData.link}`;
+                resultDiv.textContent = `Post created successfully! View it here: ${data.link}`;
             } catch (error) {
+                console.error("Error generating content:", error);
                 errorDiv.style.display = "block";
                 errorDiv.textContent = "Error: " + error.message;
             }
