@@ -97,14 +97,10 @@
         <label for="seo_keywords">SEO Keywords:</label>
         <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
-        <label for="image_prompt">Image Prompt (Optional):</label>
-        <input type="text" id="image_prompt" placeholder="Describe the image to generate with AI (e.g., CrossFit gym)">
-
         <button type="submit">Generate and Publish</button>
     </form>
 
     <h2>Generated Content:</h2>
-    <img id="featuredImage" src="" alt="Generated Image">
     <pre id="result">Waiting for content...</pre>
     <p id="error" class="error"></p>
 
@@ -150,11 +146,9 @@
             const audience = document.getElementById("audience").value;
             const wordCount = document.getElementById("word_count").value;
             const seoKeywords = document.getElementById("seo_keywords").value;
-            const imagePrompt = document.getElementById("image_prompt").value;
 
             const resultPlaceholder = document.getElementById("result");
             const errorPlaceholder = document.getElementById("error");
-            const featuredImage = document.getElementById("featuredImage");
 
             resultPlaceholder.textContent = "Generating content, please wait...";
             errorPlaceholder.textContent = "";
@@ -191,38 +185,12 @@
                     throw new Error("No content received from OpenAI API.");
                 }
 
-                const paragraphs = generatedContent.split("\n").filter((para) => para.trim() !== "");
-                let updatedContent = "";
-
-                for (const paragraph of paragraphs) {
-                    updatedContent += `<p>${paragraph}</p>`;
-                    const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${openAIKey}`,
-                        },
-                        body: JSON.stringify({
-                            prompt: `Illustrate: ${paragraph}`,
-                            n: 1,
-                            size: "512x512",
-                        }),
-                    });
-
-                    const imageData = await imageResponse.json();
-                    const imageUrl = imageData.data?.[0]?.url;
-                    if (imageUrl) {
-                        updatedContent += `<img src="${imageUrl}" alt="Generated Image" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
-                        featuredImage.src = imageUrl;
-                    }
-                }
-
                 const postResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: updatedContent,
+                        content: generatedContent,
                         status: "publish",
                         wordpressToken,
                         openAIKey,

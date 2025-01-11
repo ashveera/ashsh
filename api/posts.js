@@ -19,8 +19,8 @@ module.exports = async (req, res) => {
 
         console.log("Received Request:", { title, status });
 
-        // Generate featured image
-        const featureImagePrompt = "Illustrate a high-quality featured image for the article titled: " + title;
+        // Generate featured image using OpenAI DALL·E
+        const featureImagePrompt = `Create a high-quality featured image for an article titled "${title}"`;
         const featureImageResponse = await fetch("https://api.openai.com/v1/images/generations", {
             method: "POST",
             headers: {
@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
         const featureImageUrl = featureImageData.data[0].url;
         console.log("Generated Featured Image URL:", featureImageUrl);
 
-        // Download the feature image for upload to WordPress
+        // Upload the featured image to WordPress
         const imageResponse = await fetch(featureImageUrl);
         const imageBuffer = await imageResponse.buffer();
 
@@ -60,13 +60,44 @@ module.exports = async (req, res) => {
         const uploadedMediaData = await uploadedMediaResponse.json();
 
         if (!uploadedMediaResponse.ok || !uploadedMediaData.id) {
-            throw new Error("Failed to upload feature image to WordPress.");
+            throw new Error("Failed to upload featured image to WordPress.");
         }
 
         const featureImageId = uploadedMediaData.id;
         console.log("Feature Image uploaded successfully, ID:", featureImageId);
 
-        // Create the post in WordPress with the featured image
+        // Prepare content with asynchronous image generation for each paragraph
+        const paragraphs = content.split("\n").filter((para) => para.trim() !== "");
+        let updatedContent = "";
+
+        for (const paragraph of paragraphs) {
+            updatedContent += `<p>${paragraph}</p>`;
+            try {
+                const imageResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                        prompt: `Illustrate: ${paragraph}`,
+                        n: 1,
+                        size: "512x512",
+                    }),
+                });
+
+                const imageData = await imageResponse.json();
+                const imageUrl = imageData.data?.[0]?.url;
+
+                if (imageUrl) {
+                    updatedContent += `<img src="${imageUrl}" alt="Generated Image" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
+                }
+            } catch (error) {
+                console.warn("Image generation failed for paragraph:", error.message);
+            }
+        }
+
+        // Create the WordPress post with the updated content and featured image
         const postResponse = await fetch(postUrl, {
             method: "POST",
             headers: {
@@ -75,7 +106,7 @@ module.exports = async (req, res) => {
             },
             body: JSON.stringify({
                 title,
-                content,
+                content: updatedContent,
                 status: status || "publish",
                 featured_media: featureImageId, // Attach the featured image
             }),
