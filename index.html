@@ -7,27 +7,65 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
-        /* Same styling as before */
+        /* UI Styling */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
             background-color: #f9f9f9;
         }
-        h1 { color: #333; }
-        form { background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 500px; }
-        label { font-weight: bold; display: block; margin-bottom: 5px; }
-        input, select, button {
-            width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;
+        h1 {
+            color: #333;
         }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        pre { background-color: #eee; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
-        img { display: block; margin: 20px auto; max-width: 100%; border-radius: 8px; }
-        .error { color: red; font-weight: bold; }
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-width: 500px;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <h1>Advanced Content Generator & Publisher</h1>
+
     <form id="contentForm" onsubmit="generateContent(event)">
         <label for="keywords">Keywords:</label>
         <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
@@ -136,27 +174,59 @@
             }
 
             try {
-                const response = await fetch("/api/posts", {
+                // Step 1: Generate Content via OpenAI
+                console.log("Step 1: Generating content...");
+                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
+
+                const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${openAIKey}`,
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 1000,
+                    }),
+                });
+
+                if (!contentResponse.ok) {
+                    const errorText = await contentResponse.text();
+                    throw new Error("Failed to generate content: " + errorText);
+                }
+
+                const contentData = await contentResponse.json();
+                const generatedContent = contentData.choices?.[0]?.message?.content;
+
+                if (!generatedContent) {
+                    throw new Error("No content received from OpenAI API.");
+                }
+
+                console.log("Generated Content:", generatedContent);
+
+                // Step 2: Post Content to WordPress
+                console.log("Step 2: Posting content to WordPress...");
+                const postResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: `Example content with ${keywords}`,
-                        imagePrompt,
+                        content: generatedContent,
+                        status: "publish",
                         wordpressToken,
+                        imagePrompt,
                         openAIKey,
                     }),
                 });
 
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || "Failed to publish post.");
+                if (!postResponse.ok) {
+                    const errorText = await postResponse.text();
+                    throw new Error("Failed to post content to WordPress: " + errorText);
                 }
 
-                resultPlaceholder.textContent = `Content published successfully! View it here: ${data.link}`;
-                if (data.imageUrl) {
-                    featuredImage.src = data.imageUrl;
-                }
+                const { link } = await postResponse.json();
+                alert(`Content posted successfully! View it here: ${link}`);
             } catch (error) {
                 console.error("Error:", error);
                 errorPlaceholder.textContent = "Error: " + error.message;
