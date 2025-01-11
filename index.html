@@ -9,102 +9,138 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
             background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
         }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
         h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
             color: #333;
         }
+
         form {
-            background-color: #fff;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
+
         label {
             font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
+            color: #555;
         }
-        input, select, button {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
+
+        input, select, textarea, button {
+            padding: 10px;
+            font-size: 14px;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 5px;
+            width: 100%;
         }
+
+        textarea {
+            resize: vertical;
+        }
+
         button {
             background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
+            transition: background 0.3s ease;
         }
+
         button:hover {
             background-color: #0056b3;
         }
-        pre {
-            background-color: #eee;
+
+        .result {
+            margin-top: 20px;
             padding: 15px;
             border-radius: 5px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            background-color: #eef;
+            border: 1px solid #ccd;
         }
-        img {
-            display: block;
-            margin: 20px auto;
-            max-width: 100%;
-            border-radius: 8px;
-        }
+
         .error {
             color: red;
+            margin-top: 10px;
             font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <h1>Advanced Content Generator & Publisher</h1>
+    <div class="container">
+        <h1>Content Generator & Publisher</h1>
+        <form id="contentForm" onsubmit="generateContent(event)">
+            <!-- Keywords -->
+            <label for="keywords">Keywords:</label>
+            <input type="text" id="keywords" placeholder="Enter keywords (e.g., fitness tips)" required />
 
-    <form id="contentForm" onsubmit="generateContent(event)">
-        <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
+            <!-- Content Type -->
+            <label for="content_type">Content Type:</label>
+            <select id="content_type" required>
+                <option value="blog_post">Blog Post</option>
+                <option value="product_review">Product Review</option>
+                <option value="affiliate_article">Affiliate Article</option>
+                <option value="how_to_guide">How-To Guide</option>
+                <option value="listicle">Listicle</option>
+            </select>
 
-        <label for="content_type">Content Type:</label>
-        <select id="content_type" required>
-            <option value="blog_post">Blog Post</option>
-            <option value="product_review">Product Review</option>
-            <option value="affiliate_article">Affiliate Article</option>
-        </select>
+            <!-- Tone -->
+            <label for="tone">Tone:</label>
+            <select id="tone">
+                <option value="formal">Formal</option>
+                <option value="casual">Casual</option>
+                <option value="friendly">Friendly</option>
+                <option value="professional">Professional</option>
+                <option value="witty">Witty</option>
+            </select>
 
-        <label for="tone">Tone:</label>
-        <select id="tone">
-            <option value="formal">Formal</option>
-            <option value="casual">Casual</option>
-            <option value="friendly">Friendly</option>
-            <option value="professional">Professional</option>
-        </select>
+            <!-- Target Audience -->
+            <label for="audience">Target Audience:</label>
+            <input type="text" id="audience" placeholder="E.g., beginners, tech enthusiasts" required />
 
-        <label for="audience">Target Audience:</label>
-        <input type="text" id="audience" placeholder="e.g., Beginners, Fitness Enthusiasts" required>
+            <!-- Word Count -->
+            <label for="word_count">Word Count:</label>
+            <select id="word_count">
+                <option value="500">500 Words</option>
+                <option value="1000">1000 Words</option>
+                <option value="1500">1500 Words</option>
+                <option value="2000">2000+ Words</option>
+            </select>
 
-        <label for="word_count">Word Count:</label>
-        <select id="word_count">
-            <option value="500">500</option>
-            <option value="1000">1000</option>
-            <option value="2000+">2000+</option>
-        </select>
+            <!-- SEO Keywords -->
+            <label for="seo_keywords">SEO Keywords:</label>
+            <textarea id="seo_keywords" rows="3" placeholder="Enter SEO keywords, separated by commas"></textarea>
 
-        <label for="seo_keywords">SEO Keywords:</label>
-        <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
+            <!-- Image Prompt -->
+            <label for="image_prompt">Image Prompt (Optional):</label>
+            <input type="text" id="image_prompt" placeholder="Describe the image to generate (e.g., CrossFit gym)" />
 
-        <button type="submit">Generate and Publish</button>
-    </form>
+            <!-- Generate & Publish Button -->
+            <button type="submit">Generate and Publish</button>
+        </form>
 
-    <h2>Generated Content:</h2>
-    <pre id="result">Waiting for content...</pre>
-    <p id="error" class="error"></p>
+        <!-- Results -->
+        <div class="result" id="result" style="display: none;"></div>
+        <p class="error" id="error" style="display: none;"></p>
+    </div>
 
     <script>
+        // Firebase Configuration
+            // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
@@ -115,28 +151,33 @@
             measurementId: "G-3RCY0TDSD0",
         };
 
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         let openAIKey = "";
         let wordpressToken = "";
 
+        // Fetch API keys from Firebase
         async function fetchApiKeys() {
             try {
-                const doc = await db.collection("api_keys").doc("openai_key").get();
+                const doc = await db.collection("api_keys").doc("keys").get();
                 if (doc.exists) {
-                    openAIKey = doc.data().key_value;
-                    wordpressToken = doc.data().wordpress_key;
+                    openAIKey = doc.data().openAIKey;
+                    wordpressToken = doc.data().wordpressToken;
+                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
                 } else {
                     throw new Error("API keys document does not exist in Firestore.");
                 }
             } catch (error) {
+                console.error("Error fetching API keys:", error);
                 document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
             }
         }
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
+        // Generate Content Function
         async function generateContent(event) {
             event.preventDefault();
 
@@ -146,12 +187,15 @@
             const audience = document.getElementById("audience").value;
             const wordCount = document.getElementById("word_count").value;
             const seoKeywords = document.getElementById("seo_keywords").value;
+            const imagePrompt = document.getElementById("image_prompt").value;
 
-            const resultPlaceholder = document.getElementById("result");
-            const errorPlaceholder = document.getElementById("error");
+            const resultDiv = document.getElementById("result");
+            const errorDiv = document.getElementById("error");
 
-            resultPlaceholder.textContent = "Generating content, please wait...";
-            errorPlaceholder.textContent = "";
+            // Reset UI
+            resultDiv.style.display = "none";
+            errorDiv.style.display = "none";
+            resultDiv.textContent = "Generating content, please wait...";
 
             if (!openAIKey || !wordpressToken) {
                 alert("API keys not loaded. Please refresh the page.");
@@ -159,53 +203,43 @@
             }
 
             try {
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
-                const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 1000,
-                    }),
-                });
-
-                if (!contentResponse.ok) {
-                    const errorText = await contentResponse.text();
-                    throw new Error("Failed to generate content: " + errorText);
-                }
-
-                const contentData = await contentResponse.json();
-                const generatedContent = contentData.choices?.[0]?.message?.content;
-
-                if (!generatedContent) {
-                    throw new Error("No content received from OpenAI API.");
-                }
-
-                const postResponse = await fetch("/api/posts", {
+                // Call the backend API to create the post
+                const createPostResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         title: `Generated Content: ${keywords}`,
-                        content: generatedContent,
-                        status: "publish",
+                        content: `Write a ${tone} ${contentType} for ${audience} with ${keywords}. Include SEO: ${seoKeywords}. Word Count: ${wordCount}.`,
+                        wordpressToken,
+                    }),
+                });
+
+                const createPostData = await createPostResponse.json();
+
+                if (!createPostResponse.ok) {
+                    throw new Error(createPostData.error);
+                }
+
+                const { postId, link } = createPostData;
+                resultDiv.style.display = "block";
+                resultDiv.textContent = `Post created successfully! View it here: ${link}`;
+
+                // Call the backend API to process images
+                await fetch("/api/processImages", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        postId,
+                        content: `Generated content using keywords: ${keywords}.`,
                         wordpressToken,
                         openAIKey,
                     }),
                 });
 
-                if (!postResponse.ok) {
-                    const errorText = await postResponse.text();
-                    throw new Error("Failed to post content to WordPress: " + errorText);
-                }
-
-                const { link } = await postResponse.json();
-                resultPlaceholder.textContent = `Content posted successfully! View it here: ${link}`;
+                alert("Post with images is being processed. The post is live at " + link);
             } catch (error) {
-                errorPlaceholder.textContent = "Error: " + error.message;
+                errorDiv.style.display = "block";
+                errorDiv.textContent = "Error: " + error.message;
             }
         }
     </script>
