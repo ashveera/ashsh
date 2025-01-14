@@ -1,41 +1,76 @@
-const fetch = require("node-fetch");
+api posts:const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
+    const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
 
     try {
         if (req.method !== "POST") {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
-        const { title, content, status, wordpressToken, openAIKey } = req.body;
+        const { title, content, status, wordpressToken, imageUrl, imagePrompt } = req.body;
 
-        if (!wordpressToken || !openAIKey || !title || !content) {
-            return res.status(400).json({
-                error: "Missing required fields: wordpressToken, openAIKey, title, or content.",
-            });
+        if (!wordpressToken || !title || !content) {
+            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
         }
 
-        console.log("Received Request:", { title, content, status });
+        console.log("Received Request:", { title, content, status, imageUrl, imagePrompt });
 
-        let updatedContent = "";
+        let featuredMediaId;
 
-        // Split content into paragraphs and generate images
-        const paragraphs = content.split("\n").filter((para) => para.trim() !== "");
-        for (const paragraph of paragraphs) {
-            updatedContent += `<p>${paragraph}</p>`;
-
+        // Step 1: Handle image upload/generation
+        if (imageUrl) {
             try {
-                console.log("Generating image for paragraph:", paragraph);
+                console.log("Fetching image from URL:", imageUrl);
+                const imageResponse = await fetch(imageUrl);
+
+                if (!imageResponse.ok) {
+                    throw new Error(Failed to fetch image: ${imageResponse.statusText});
+                }
+
+                const imageBuffer = await imageResponse.buffer();
+                const imageMimeType = imageResponse.headers.get("content-type");
+
+                if (!["image/jpeg", "image/png"].includes(imageMimeType)) {
+                    throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
+                }
+
+                console.log("Uploading image to WordPress...");
+                const uploadResponse = await fetch(mediaUrl, {
+                    method: "POST",
+                    headers: {
+                        Authorization: Bearer ${wordpressToken},
+                        "Content-Type": imageMimeType,
+                        "Content-Disposition": attachment; filename="featured-image.${imageMimeType.split("/")[1]}",
+                    },
+                    body: imageBuffer,
+                });
+
+                const uploadData = await uploadResponse.json();
+
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadData.message || "Image upload failed.");
+                }
+
+                featuredMediaId = uploadData.id;
+                console.log("Image uploaded successfully with ID:", featuredMediaId);
+            } catch (error) {
+                console.warn("Image upload failed. Skipping featured media:", error.message);
+                featuredMediaId = null;
+            }
+        } else if (imagePrompt) {
+            try {
+                console.log("Generating image using DALL·E with prompt:", imagePrompt);
 
                 const dallEResponse = await fetch("https://api.openai.com/v1/images/generations", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
+                        Authorization: Bearer ${process.env.OPENAI_API_KEY},
                     },
                     body: JSON.stringify({
-                        prompt: `Create an image representing: ${paragraph}`,
+                        prompt: imagePrompt,
                         n: 1,
                         size: "512x512",
                     }),
@@ -50,27 +85,48 @@ module.exports = async (req, res) => {
                 const dallEImageUrl = dallEData.data[0].url;
                 console.log("Generated Image URL:", dallEImageUrl);
 
-                // Add the image to the content
-                updatedContent += `<img src="${dallEImageUrl}" alt="Image for paragraph" style="margin: 10px 0; width: 100%; border-radius: 8px;">`;
+                const dallEImageResponse = await fetch(dallEImageUrl);
+                const dallEImageBuffer = await dallEImageResponse.buffer();
+
+                console.log("Uploading generated image to WordPress...");
+                const uploadResponse = await fetch(mediaUrl, {
+                    method: "POST",
+                    headers: {
+                        Authorization: Bearer ${wordpressToken},
+                        "Content-Type": "image/png",
+                        "Content-Disposition": attachment; filename="dalle-image.png",
+                    },
+                    body: dallEImageBuffer,
+                });
+
+                const uploadData = await uploadResponse.json();
+
+                if (!uploadResponse.ok) {
+                    throw new Error(uploadData.message || "Generated image upload failed.");
+                }
+
+                featuredMediaId = uploadData.id;
+                console.log("Generated image uploaded successfully with ID:", featuredMediaId);
             } catch (error) {
-                console.warn("Image generation failed for paragraph:", error.message);
+                console.warn("DALL·E image generation/upload failed:", error.message);
+                featuredMediaId = null;
             }
         }
 
-        console.log("Updated Content with Images:", updatedContent);
-
-        // Create the post in WordPress
+        // Step 2: Create the post in WordPress
         try {
+            console.log("Creating post in WordPress...");
             const postResponse = await fetch(postUrl, {
                 method: "POST",
                 headers: {
-                    Authorization: `Bearer ${wordpressToken}`,
+                    Authorization: Bearer ${wordpressToken},
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                     title,
-                    content: updatedContent,
+                    content,
                     status: status || "publish",
+                    featured_media: featuredMediaId || undefined,
                 }),
             });
 
