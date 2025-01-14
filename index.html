@@ -3,140 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Content Generator & Publisher</title>
+    <title>Advanced Content Generator & Publisher</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
+        /* UI Styling */
         body {
             font-family: Arial, sans-serif;
+            margin: 20px;
             background-color: #f9f9f9;
-            margin: 0;
-            padding: 0;
         }
-
-        .container {
-            max-width: 800px;
-            margin: 20px auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
         h1 {
-            font-size: 24px;
-            text-align: center;
-            margin-bottom: 20px;
             color: #333;
         }
-
         form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-width: 500px;
         }
-
         label {
             font-weight: bold;
-            color: #555;
+            display: block;
+            margin-bottom: 5px;
         }
-
-        input, select, textarea, button {
-            padding: 10px;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        input, select, button {
             width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
-
-        textarea {
-            resize: vertical;
-        }
-
         button {
             background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
-            transition: background 0.3s ease;
         }
-
         button:hover {
             background-color: #0056b3;
         }
-
-        .result {
-            margin-top: 20px;
+        pre {
+            background-color: #eee;
             padding: 15px;
             border-radius: 5px;
-            background-color: #eef;
-            border: 1px solid #ccd;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
-
+        img {
+            display: block;
+            margin: 20px auto;
+            max-width: 100%;
+            border-radius: 8px;
+        }
         .error {
             color: red;
-            margin-top: 10px;
             font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Content Generator & Publisher</h1>
-        <form id="contentForm" onsubmit="generateContent(event)">
-            <!-- Keywords -->
-            <label for="keywords">Keywords:</label>
-            <input type="text" id="keywords" placeholder="Enter keywords (e.g., fitness tips)" required />
+    <h1>Advanced Content Generator & Publisher</h1>
 
-            <!-- Content Type -->
-            <label for="content_type">Content Type:</label>
-            <select id="content_type" required>
-                <option value="blog_post">Blog Post</option>
-                <option value="product_review">Product Review</option>
-                <option value="affiliate_article">Affiliate Article</option>
-                <option value="how_to_guide">How-To Guide</option>
-                <option value="listicle">Listicle</option>
-            </select>
+    <form id="contentForm" onsubmit="generateContent(event)">
+        <label for="keywords">Keywords:</label>
+        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
 
-            <!-- Tone -->
-            <label for="tone">Tone:</label>
-            <select id="tone">
-                <option value="formal">Formal</option>
-                <option value="casual">Casual</option>
-                <option value="friendly">Friendly</option>
-                <option value="professional">Professional</option>
-                <option value="witty">Witty</option>
-            </select>
+        <label for="content_type">Content Type:</label>
+        <select id="content_type" required>
+            <option value="blog_post">Blog Post</option>
+            <option value="product_review">Product Review</option>
+            <option value="affiliate_article">Affiliate Article</option>
+        </select>
 
-            <!-- Target Audience -->
-            <label for="audience">Target Audience:</label>
-            <input type="text" id="audience" placeholder="E.g., beginners, tech enthusiasts" required />
+        <label for="tone">Tone:</label>
+        <select id="tone">
+            <option value="formal">Formal</option>
+            <option value="casual">Casual</option>
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+        </select>
 
-            <!-- Word Count -->
-            <label for="word_count">Word Count:</label>
-            <select id="word_count">
-                <option value="500">500 Words</option>
-                <option value="1000">1000 Words</option>
-                <option value="1500">1500 Words</option>
-                <option value="2000">2000+ Words</option>
-            </select>
+        <label for="audience">Target Audience:</label>
+        <input type="text" id="audience" placeholder="e.g., Beginners, Fitness Enthusiasts" required>
 
-            <!-- SEO Keywords -->
-            <label for="seo_keywords">SEO Keywords:</label>
-            <textarea id="seo_keywords" rows="3" placeholder="Enter SEO keywords, separated by commas"></textarea>
+        <label for="word_count">Word Count:</label>
+        <select id="word_count">
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="2000">2000+</option>
+        </select>
 
-            <!-- Image Prompt -->
-            <label for="image_prompt">Image Prompt (Optional):</label>
-            <input type="text" id="image_prompt" placeholder="Describe the image to generate (e.g., CrossFit gym)" />
+        <label for="seo_keywords">SEO Keywords:</label>
+        <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
 
-            <!-- Generate & Publish Button -->
-            <button type="submit">Generate and Publish</button>
-        </form>
+        <label for="image_prompt">Image Prompt (Optional):</label>
+        <input type="text" id="image_prompt" placeholder="Describe the image to generate with AI (e.g., CrossFit gym)">
 
-        <!-- Results -->
-        <div class="result" id="result" style="display: none;"></div>
-        <p class="error" id="error" style="display: none;"></p>
-    </div>
+        <button type="submit">Generate and Publish</button>
+    </form>
+
+    <h2>Generated Content:</h2>
+    <img id="featuredImage" src="" alt="Generated Image">
+    <pre id="result">Waiting for content...</pre>
+    <p id="error" class="error"></p>
 
     <script>
         // Firebase Configuration
@@ -160,11 +131,11 @@
         // Fetch API keys from Firebase
         async function fetchApiKeys() {
             try {
-                console.log("Fetching API keys...");
+                console.log("Fetching API keys from Firestore...");
                 const doc = await db.collection("api_keys").doc("openai_key").get();
                 if (doc.exists) {
-                    openAIKey = doc.data().key_value; // Extract OpenAI key from 'key_value' field
-                    wordpressToken = doc.data().wordpress_key; // Extract WordPress key from 'wordpress_key' field
+                    openAIKey = doc.data().key_value;
+                    wordpressToken = doc.data().wordpress_key;
                     console.log("API Keys Loaded:", { openAIKey, wordpressToken });
                 } else {
                     throw new Error("API keys document does not exist in Firestore.");
@@ -177,7 +148,7 @@
 
         document.addEventListener("DOMContentLoaded", fetchApiKeys);
 
-        // Generate Content Function
+        // Generate and Post Content
         async function generateContent(event) {
             event.preventDefault();
 
@@ -189,12 +160,13 @@
             const seoKeywords = document.getElementById("seo_keywords").value;
             const imagePrompt = document.getElementById("image_prompt").value;
 
-            const resultDiv = document.getElementById("result");
-            const errorDiv = document.getElementById("error");
+            const resultPlaceholder = document.getElementById("result");
+            const errorPlaceholder = document.getElementById("error");
+            const featuredImage = document.getElementById("featuredImage");
 
             // Reset UI
-            resultDiv.style.display = "none";
-            errorDiv.style.display = "none";
+            resultPlaceholder.textContent = "Generating content, please wait...";
+            errorPlaceholder.textContent = "";
 
             if (!openAIKey || !wordpressToken) {
                 alert("API keys not loaded. Please refresh the page.");
@@ -202,33 +174,62 @@
             }
 
             try {
-                // Prepare the prompt
-                const prompt = `Write a ${tone} ${contentType} for ${audience} with keywords: ${keywords}. Include SEO: ${seoKeywords}. Word Count: ${wordCount}.`;
+                // Step 1: Generate Content via OpenAI
+                console.log("Step 1: Generating content...");
+                const prompt = Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.;
 
-                // Call the backend API to create the post
-                const response = await fetch("/api/posts", {
+                const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: Bearer ${openAIKey},
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-3.5-turbo",
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 1000,
+                    }),
+                });
+
+                if (!contentResponse.ok) {
+                    const errorText = await contentResponse.text();
+                    throw new Error("Failed to generate content: " + errorText);
+                }
+
+                const contentData = await contentResponse.json();
+                const generatedContent = contentData.choices?.[0]?.message?.content;
+
+                if (!generatedContent) {
+                    throw new Error("No content received from OpenAI API.");
+                }
+
+                console.log("Generated Content:", generatedContent);
+
+                // Step 2: Post Content to WordPress
+                console.log("Step 2: Posting content to WordPress...");
+                const postResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
-                        content: prompt,
+                        title: Generated Content: ${keywords},
+                        content: generatedContent,
+                        status: "publish",
                         wordpressToken,
+                        imagePrompt,
                         openAIKey,
                     }),
                 });
 
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error);
+                if (!postResponse.ok) {
+                    const errorText = await postResponse.text();
+                    throw new Error("Failed to post content to WordPress: " + errorText);
                 }
 
-                resultDiv.style.display = "block";
-                resultDiv.textContent = `Post created successfully! View it here: ${data.link}`;
+                const { link } = await postResponse.json();
+                alert(Content posted successfully! View it here: ${link});
             } catch (error) {
-                console.error("Error generating content:", error);
-                errorDiv.style.display = "block";
-                errorDiv.textContent = "Error: " + error.message;
+                console.error("Error:", error);
+                errorPlaceholder.textContent = "Error: " + error.message;
             }
         }
     </script>
