@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+indext html and javascript : <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -110,15 +110,17 @@
     <p id="error" class="error"></p>
 
     <script>
-      
-  const firebaseConfig = {
+        // Firebase Configuration
+        const firebaseConfig = {
             apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
             authDomain: "cuppashash.firebaseapp.com",
             projectId: "cuppashash",
             storageBucket: "cuppashash.firebasestorage.app",
             messagingSenderId: "604204628087",
             appId: "1:604204628087:web:29f9ada8099680af592e72",
+            measurementId: "G-3RCY0TDSD0",
         };
+
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -172,14 +174,15 @@
             }
 
             try {
+                // Step 1: Generate Content via OpenAI
                 console.log("Step 1: Generating content...");
-                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
+                const prompt = Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.;
 
                 const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: `Bearer ${openAIKey}`,
+                        Authorization: Bearer ${openAIKey},
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
@@ -202,16 +205,18 @@
 
                 console.log("Generated Content:", generatedContent);
 
+                // Step 2: Post Content to WordPress
                 console.log("Step 2: Posting content to WordPress...");
                 const postResponse = await fetch("/api/posts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title: `Generated Content: ${keywords}`,
+                        title: Generated Content: ${keywords},
                         content: generatedContent,
                         status: "publish",
                         wordpressToken,
                         imagePrompt,
+                        openAIKey,
                     }),
                 });
 
@@ -220,10 +225,10 @@
                     throw new Error("Failed to post content to WordPress: " + errorText);
                 }
 
-                const postData = await postResponse.json();
-                resultPlaceholder.textContent = `Content posted successfully! View it here: ${postData.link}`;
+                const { link } = await postResponse.json();
+                alert(Content posted successfully! View it here: ${link});
             } catch (error) {
-                console.error("Error:", error.message);
+                console.error("Error:", error);
                 errorPlaceholder.textContent = "Error: " + error.message;
             }
         }
