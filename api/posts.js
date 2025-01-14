@@ -1,4 +1,4 @@
-api posts:const fetch = require("node-fetch");
+const fetch = require("node-fetch");
 
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
