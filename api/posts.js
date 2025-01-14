@@ -10,6 +10,8 @@ module.exports = async (req, res) => {
         }
 
         const { title, content, status, wordpressToken, imageUrl, imagePrompt } = req.body;
+		        console.log("WordPress Token Received in Backend:", wordpressToken);
+
 
         if (!wordpressToken || !title || !content) {
             return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
