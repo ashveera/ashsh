@@ -112,13 +112,12 @@
     <script>
         // Firebase Configuration
         const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.firebasestorage.app",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72",
-            measurementId: "G-3RCY0TDSD0",
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID",
         };
 
         // Initialize Firebase
@@ -174,7 +173,6 @@
             }
 
             try {
-                // Step 1: Generate Content via OpenAI
                 console.log("Step 1: Generating content...");
                 const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
@@ -203,33 +201,33 @@
                     throw new Error("No content received from OpenAI API.");
                 }
 
-onsole.log("Generated Content:", generatedContent);
+                console.log("Generated Content:", generatedContent);
 
-// Step 2: Post Content to WordPress
-console.log("Step 2: Posting content to WordPress...");
-console.log("WordPress Token:", wordpressToken);
+                console.log("Step 2: Posting content to WordPress...");
+                const postResponse = await fetch("/api/posts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        title: `Generated Content: ${keywords}`,
+                        content: generatedContent,
+                        status: "publish",
+                        wordpressToken,
+                        imagePrompt,
+                    }),
+                });
 
-const postResponse = await fetch("/api/posts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-        title: `Generated Content: ${keywords}`,
-        content: generatedContent,
-        status: "publish",
-        wordpressToken, // Ensure this is populated
-        imagePrompt,
-        openAIKey,
-    }),
-});
+                if (!postResponse.ok) {
+                    const errorText = await postResponse.text();
+                    throw new Error("Failed to post content to WordPress: " + errorText);
+                }
 
-if (!postResponse.ok) {
-    const errorText = await postResponse.text();
-    console.error("Post to WordPress Failed:", errorText);
-    throw new Error("Failed to post content to WordPress: " + errorText);
-}
-
-const postData = await postResponse.json();
-console.log("Content posted successfully:", postData);
+                const postData = await postResponse.json();
+                resultPlaceholder.textContent = `Content posted successfully! View it here: ${postData.link}`;
+            } catch (error) {
+                console.error("Error:", error.message);
+                errorPlaceholder.textContent = "Error: " + error.message;
+            }
+        }
     </script>
 </body>
 </html>
