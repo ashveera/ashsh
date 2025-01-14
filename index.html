@@ -176,13 +176,13 @@
             try {
                 // Step 1: Generate Content via OpenAI
                 console.log("Step 1: Generating content...");
-                const prompt = Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.;
+                const prompt = `Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.`;
 
                 const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: Bearer ${openAIKey},
+                        Authorization: `Bearer ${openAIKey}`,
                     },
                     body: JSON.stringify({
                         model: "gpt-3.5-turbo",
@@ -211,7 +211,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        title: Generated Content: ${keywords},
+                        title: `Generated Content: ${keywords}`,
                         content: generatedContent,
                         status: "publish",
                         wordpressToken,
@@ -226,7 +226,7 @@
                 }
 
                 const { link } = await postResponse.json();
-                alert(Content posted successfully! View it here: ${link});
+                alert(`Content posted successfully! View it here: ${link}`);
             } catch (error) {
                 console.error("Error:", error);
                 errorPlaceholder.textContent = "Error: " + error.message;
