@@ -1,6 +1,4 @@
-// Import fetch (use native if available)
 const fetch = globalThis.fetch || require("node-fetch");
-const FileType = require("file-type");
 
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
@@ -21,28 +19,31 @@ module.exports = async (req, res) => {
 
         let featuredMediaId;
 
-        // Image upload logic (if applicable)
+        // Step 1: Upload the image to WordPress
         if (imageUrl) {
             try {
-                const imageBuffer = await fetch(imageUrl).then(res => {
-                    if (!res.ok) {
-                        throw new Error(`Failed to fetch image: ${res.statusText}`);
-                    }
-                    return res.buffer();
-                });
+                const response = await fetch(imageUrl);
 
-                const fileType = await FileType.fromBuffer(imageBuffer);
-
-                if (!fileType || !["image/jpeg", "image/png"].includes(fileType.mime)) {
-                    throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch image: ${response.statusText}`);
                 }
+
+                const mimeType = response.headers.get("content-type");
+                const validMimeTypes = ["image/jpeg", "image/png"];
+
+                if (!validMimeTypes.includes(mimeType)) {
+                    throw new Error(`Unsupported image type: ${mimeType}. Only JPEG and PNG are allowed.`);
+                }
+
+                const fileExtension = mimeType.split("/")[1]; // Get file extension (e.g., jpeg, png)
+                const imageBuffer = await response.buffer();
 
                 const imageResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
-                        "Content-Type": fileType.mime,
-                        "Content-Disposition": `attachment; filename="featured-image.${fileType.ext}"`,
+                        "Content-Type": mimeType,
+                        "Content-Disposition": `attachment; filename="featured-image.${fileExtension}"`,
                     },
                     body: imageBuffer,
                 });
@@ -61,7 +62,7 @@ module.exports = async (req, res) => {
             }
         }
 
-        // Post creation logic
+        // Step 2: Create the post in WordPress
         try {
             const postResponse = await fetch(postUrl, {
                 method: "POST",
