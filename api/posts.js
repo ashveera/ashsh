@@ -26,7 +26,8 @@ module.exports = async (req, res) => {
                 const imageResponse = await fetch(imageUrl);
 
                 if (!imageResponse.ok) {
-                    throw new Error(Failed to fetch image: ${imageResponse.statusText});
+                  throw new Error(Failed to fetch image: ${imageResponse.statusText});
+
                 }
 
                 const imageBuffer = await imageResponse.buffer();
