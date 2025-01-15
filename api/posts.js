@@ -26,8 +26,7 @@ module.exports = async (req, res) => {
                 const imageResponse = await fetch(imageUrl);
 
                 if (!imageResponse.ok) {
-throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-
+                    throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
                 }
 
                 const imageBuffer = await imageResponse.buffer();
@@ -41,9 +40,9 @@ throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
                 const uploadResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
-                        Authorization: Bearer ${wordpressToken},
+                        Authorization: `Bearer ${wordpressToken}`,
                         "Content-Type": imageMimeType,
-                        "Content-Disposition": attachment; filename="featured-image.${imageMimeType.split("/")[1]}",
+                        "Content-Disposition": `attachment; filename="featured-image.${imageMimeType.split("/")[1]}"`,
                     },
                     body: imageBuffer,
                 });
@@ -68,7 +67,7 @@ throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        Authorization: Bearer ${process.env.OPENAI_API_KEY},
+                        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
                     },
                     body: JSON.stringify({
                         prompt: imagePrompt,
@@ -93,9 +92,9 @@ throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
                 const uploadResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
-                        Authorization: Bearer ${wordpressToken},
+                        Authorization: `Bearer ${wordpressToken}`,
                         "Content-Type": "image/png",
-                        "Content-Disposition": attachment; filename="dalle-image.png",
+                        "Content-Disposition": `attachment; filename="dalle-image.png"`,
                     },
                     body: dallEImageBuffer,
                 });
@@ -120,7 +119,7 @@ throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
             const postResponse = await fetch(postUrl, {
                 method: "POST",
                 headers: {
-                    Authorization: Bearer ${wordpressToken},
+                    Authorization: `Bearer ${wordpressToken}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
