@@ -1,5 +1,62 @@
 const fetch = require("node-fetch");
 
+let imageTasks = {}; // Temporary in-memory storage for simplicity
+
+module.exports = async (req, res) => {
+    const openAIUrl = "https://api.openai.com/v1/images/generations";
+    const { keywords, openAIKey } = req.body;
+
+    const taskId = `${Date.now()}-${Math.random()}`; // Unique task ID
+    imageTasks[taskId] = { status: "in-progress" };
+
+    try {
+        // Trigger DALL·E API
+        const openAIResponse = await fetch(openAIUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${openAIKey}`,
+            },
+            body: JSON.stringify({
+                prompt: `Generate a visually appealing image related to: ${keywords}`,
+                n: 1,
+                size: "1024x1024",
+            }),
+        });
+
+        if (!openAIResponse.ok) {
+            const errorData = await openAIResponse.json();
+            imageTasks[taskId] = { status: "error", error: errorData.error.message };
+            throw new Error(`OpenAI API Error: ${errorData.error.message}`);
+        }
+
+        const openAIData = await openAIResponse.json();
+        imageTasks[taskId] = { status: "completed", imageUrl: openAIData.data[0].url };
+
+        res.status(200).json({ taskId });
+    } catch (error) {
+        console.error("Image Generation Error:", error.message || error);
+        imageTasks[taskId] = { status: "error", error: error.message };
+        res.status(500).json({ error: error.message || "Unknown server error" });
+    }
+};
+
+// Polling Endpoint
+module.exports.pollStatus = async (req, res) => {
+    const { taskId } = req.query;
+
+    if (!imageTasks[taskId]) {
+        return res.status(404).json({ error: "Task not found" });
+    }
+
+    res.status(200).json(imageTasks[taskId]);
+};
+
+
+
+const fetch = require("node-fetch");
+const FileType = require("file-type");
+
 module.exports = async (req, res) => {
     const postUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/posts";
     const mediaUrl = "https://fitnessbodybuildingvolt.com/wp-json/wp/v2/media";
@@ -9,76 +66,86 @@ module.exports = async (req, res) => {
             return res.status(405).json({ error: "Method not allowed" });
         }
 
-        // Parse the incoming request body
-        const { title, content, status, wordpressToken, imageUrl, imagePrompt } = req.body;
+        const { title, content, status, wordpressToken, imageUrl } = req.body;
 
-        // Validate required fields
         if (!wordpressToken || !title || !content) {
-            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content." });
+            return res.status(400).json({ error: "Missing required fields: wordpressToken, title, or content" });
         }
 
-        console.log("Received Request:", { title, content, status, imageUrl, imagePrompt });
+        console.log("Received Request:", { title, content, status, imageUrl });
 
         let featuredMediaId;
 
-        // Step 1: Handle image upload or generation
+        // Step 1: Upload the image to WordPress
         if (imageUrl) {
             try {
-                console.log("Fetching image from URL:", imageUrl);
-                const imageResponse = await fetch(imageUrl);
+                const imageBuffer = await fetch(imageUrl).then(res => {
+                    if (!res.ok) {
+                        throw new Error(`Failed to fetch image: ${res.statusText}`);
+                    }
+                    return res.buffer();
+                });
 
-                if (!imageResponse.ok) {
-                    throw new Error('Failed to fetch image: ${imageResponse.statusText}');
-                }
+                const fileType = await FileType.fromBuffer(imageBuffer);
 
-                const imageBuffer = await imageResponse.buffer();
-                const imageMimeType = imageResponse.headers.get("content-type");
-
-                if (!["image/jpeg", "image/png"].includes(imageMimeType)) {
+                if (!fileType || !["image/jpeg", "image/png"].includes(fileType.mime)) {
                     throw new Error("Unsupported image type. Only JPEG and PNG are allowed.");
                 }
 
-                console.log("Uploading image to WordPress...");
-                const uploadResponse = await fetch(mediaUrl, {
+                const imageResponse = await fetch(mediaUrl, {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${wordpressToken}`,
-                        "Content-Type": imageMimeType,
-                        "Content-Disposition": `attachment; filename="featured-image.${imageMimeType.split("/")[1]}"`,
+                        "Content-Type": fileType.mime,
+                        "Content-Disposition": `attachment; filename="featured-image.${fileType.ext}"`,
                     },
                     body: imageBuffer,
                 });
 
-                const uploadData = await uploadResponse.json();
+                const imageData = await imageResponse.json();
 
-                if (!uploadResponse.ok) {
-                    throw new Error(uploadData.message || "Image upload failed.");
+                if (!imageResponse.ok) {
+                    throw new Error(imageData.message || "Image upload failed");
                 }
 
-                featuredMediaId = uploadData.id;
-                console.log("Image uploaded successfully with ID:", featuredMediaId);
-            } catch (error) {
-                console.warn("Image upload failed. Skipping featured media:", error.message);
-                featuredMediaId = null;
+                featuredMediaId = imageData.id; // Get the attachment ID for the uploaded media
+                console.log("Uploaded Image ID:", featuredMediaId);
+            } catch (err) {
+                console.error("Image Upload Error:", err.message);
+                return res.status(500).json({ error: err.message });
             }
-        } else if (imagePrompt) {
-            try {
-                console.log("Generating image using DALL·E with prompt:", imagePrompt);
+        }
 
-                const dallEResponse = await fetch("https://api.openai.com/v1/images/generations", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-                    },
-                    body: JSON.stringify({
-                        prompt: imagePrompt,
-                        n: 1,
-                        size: "512x512",
-                    }),
-                });
+        // Step 2: Create the post in WordPress
+        try {
+            const postResponse = await fetch(postUrl, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${wordpressToken}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    status: status || "publish",
+                    featured_media: featuredMediaId || undefined, // Attach the uploaded image as featured media
+                }),
+            });
 
-                const dallEData = await dallEResponse.json();
+            const postData = await postResponse.json();
 
-                if (!dallEResponse.ok || !dallEData.data || !dallEData.data[0]?.url) {
-                   
+            if (!postResponse.ok) {
+                throw new Error(postData.message || "Failed to create post");
+            }
+
+            console.log("WordPress Post Created Successfully:", postData.link);
+            res.status(200).json({ success: true, link: postData.link });
+        } catch (err) {
+            console.error("Post Creation Error:", err.message);
+            res.status(500).json({ error: err.message });
+        }
+    } catch (error) {
+        console.error("General Error:", error.message || error);
+        res.status(500).json({ error: error.message || "Unknown server error" });
+    }
+};
