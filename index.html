@@ -1,237 +1,234 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Content Generator & Publisher</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-    <style>
-        /* UI Styling */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f9f9f9;
-        }
-        h1 {
-            color: #333;
-        }
-        form {
-            background-color: #fff;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            max-width: 500px;
-        }
-        label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
-        input, select, button {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        pre {
-            background-color: #eee;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        img {
-            display: block;
-            margin: 20px auto;
-            max-width: 100%;
-            border-radius: 8px;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Advanced Content Generator & Publisher</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 18px; background:#f7f7f9; color:#222 }
+    form { background:#fff; padding:16px; border-radius:8px; max-width:800px; box-shadow:0 2px 8px rgba(0,0,0,0.06) }
+    input, select, textarea, button { width:100%; padding:10px; margin:8px 0; box-sizing:border-box }
+    button { background:#007bff; color:#fff; border:none; cursor:pointer; border-radius:6px; }
+    button[disabled] { opacity:0.6; cursor:not-allowed }
+    .row { display:flex; gap:12px }
+    .col { flex:1 }
+    pre { background:#fff; padding:12px; border-radius:6px; overflow:auto }
+    img { max-width:100%; border-radius:8px; display:block; margin:10px 0 }
+    .error { color:#b00020; font-weight:600 }
+    .preview { background:#fff; padding:12px; border-radius:8px; margin-top:12px }
+    label { font-weight:600 }
+  </style>
 </head>
 <body>
-    <h1>Advanced Content Generator & Publisher</h1>
+  <h1>Advanced Content Generator & Publisher</h1>
 
-    <form id="contentForm" onsubmit="generateContent(event)">
-        <label for="keywords">Keywords:</label>
-        <input type="text" id="keywords" placeholder="Enter keywords (e.g., Fitness Tips)" required>
+  <form id="frm">
+    <label>Keywords (comma separated)</label>
+    <input id="keywords" placeholder="e.g., home workouts, resistance bands" required/>
 
-        <label for="content_type">Content Type:</label>
-        <select id="content_type" required>
-            <option value="blog_post">Blog Post</option>
-            <option value="product_review">Product Review</option>
-            <option value="affiliate_article">Affiliate Article</option>
+    <div class="row">
+      <div class="col">
+        <label>Content Type</label>
+        <select id="contentType">
+          <option value="blog_post">Blog Post</option>
+          <option value="product_review">Product Review</option>
+          <option value="affiliate_article">Affiliate Article</option>
         </select>
-
-        <label for="tone">Tone:</label>
+      </div>
+      <div class="col">
+        <label>Tone</label>
         <select id="tone">
-            <option value="formal">Formal</option>
-            <option value="casual">Casual</option>
-            <option value="friendly">Friendly</option>
-            <option value="professional">Professional</option>
+          <option>friendly</option>
+          <option>professional</option>
+          <option>casual</option>
+          <option>formal</option>
         </select>
+      </div>
+    </div>
 
-        <label for="audience">Target Audience:</label>
-        <input type="text" id="audience" placeholder="e.g., Beginners, Fitness Enthusiasts" required>
+    <label>Target audience</label>
+    <input id="audience" placeholder="e.g., beginners, fitness enthusiasts" required/>
 
-        <label for="word_count">Word Count:</label>
-        <select id="word_count">
-            <option value="500">500</option>
-            <option value="1000">1000</option>
-            <option value="2000">2000+</option>
+    <div class="row">
+      <div class="col">
+        <label>Word count</label>
+        <select id="wordCount">
+          <option value="500">500</option>
+          <option value="1000">1000</option>
+          <option value="1500">1500</option>
         </select>
+      </div>
+      <div class="col">
+        <label>Image prompt (for DALL·E)</label>
+        <input id="imagePrompt" placeholder="e.g., A bright CrossFit gym with people training"/>
+      </div>
+    </div>
 
-        <label for="seo_keywords">SEO Keywords:</label>
-        <input type="text" id="seo_keywords" placeholder="e.g., fitness tips, home gym">
+    <hr/>
 
-        <label for="image_prompt">Image Prompt (Optional):</label>
-        <input type="text" id="image_prompt" placeholder="Describe the image to generate with AI (e.g., CrossFit gym)">
+    <label>WordPress auth method</label>
+    <select id="wpAuthMethod">
+      <option value="app">Application Password (username + app password)</option>
+      <option value="jwt">JWT token (Bearer)</option>
+    </select>
 
-        <button type="submit">Generate and Publish</button>
-    </form>
+    <div id="wpAuthApp" style="margin-top:8px">
+      <label>WP Username</label>
+      <input id="wpUser" placeholder="wp user (for application password)"/>
+      <label>WP Application Password</label>
+      <input id="wpAppPass" placeholder="app-password (generated in WP user profile)"/>
+    </div>
 
-    <h2>Generated Content:</h2>
-    <img id="featuredImage" src="" alt="Generated Image">
-    <pre id="result">Waiting for content...</pre>
-    <p id="error" class="error"></p>
+    <div id="wpAuthJwt" style="display:none; margin-top:8px">
+      <label>JWT Token</label>
+      <input id="wpJwt" placeholder="JWT token (if using JWT auth)"/>
+    </div>
 
-    <script>
-        // Firebase Configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCs7ERKwBsUWB8NrQ_wV4QsHtqfV3rydi8",
-            authDomain: "cuppashash.firebaseapp.com",
-            projectId: "cuppashash",
-            storageBucket: "cuppashash.firebasestorage.app",
-            messagingSenderId: "604204628087",
-            appId: "1:604204628087:web:29f9ada8099680af592e72",
-            measurementId: "G-3RCY0TDSD0",
-        };
+    <label>WordPress site URL (example: https://example.com)</label>
+    <input id="wpSite" placeholder="https://your-site.com" required />
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    <div style="margin-top:8px">
+      <button id="generateBtn" type="button">Generate & Preview</button>
+      <button id="postBtn" type="button" disabled>Post to WordPress</button>
+    </div>
+  </form>
 
-        let openAIKey = "";
-        let wordpressToken = "";
+  <p id="status" class="error"></p>
 
-        // Fetch API keys from Firebase
-        async function fetchApiKeys() {
-            try {
-                console.log("Fetching API keys from Firestore...");
-                const doc = await db.collection("api_keys").doc("openai_key").get();
-                if (doc.exists) {
-                    openAIKey = doc.data().key_value;
-                    wordpressToken = doc.data().wordpress_key;
-                    console.log("API Keys Loaded:", { openAIKey, wordpressToken });
-                } else {
-                    throw new Error("API keys document does not exist in Firestore.");
-                }
-            } catch (error) {
-                console.error("Error fetching API keys:", error);
-                document.getElementById("error").textContent = "Failed to load API keys. Check Firestore setup.";
-            }
-        }
+  <div class="preview" id="previewArea" style="display:none">
+    <h2>Preview</h2>
+    <h3 id="previewTitle">—</h3>
+    <p><strong>SEO description:</strong> <span id="previewSeo"></span></p>
+    <p><strong>Excerpt:</strong> <span id="previewExcerpt"></span></p>
+    <p><strong>Tags:</strong> <span id="previewTags"></span></p>
+    <div id="imageContainer"></div>
+    <div id="articleHtml"></div>
+  </div>
 
-        document.addEventListener("DOMContentLoaded", fetchApiKeys);
+  <script>
+    // Helper: show/hide WP auth fields
+    const wpAuthMethod = document.getElementById('wpAuthMethod');
+    const wpAuthApp = document.getElementById('wpAuthApp');
+    const wpAuthJwt = document.getElementById('wpAuthJwt');
+    wpAuthMethod.addEventListener('change', () => {
+      if (wpAuthMethod.value === 'app') { wpAuthApp.style.display = ''; wpAuthJwt.style.display = 'none'; }
+      else { wpAuthApp.style.display = 'none'; wpAuthJwt.style.display = ''; }
+    });
 
-        // Generate and Post Content
-        async function generateContent(event) {
-            event.preventDefault();
+    const statusEl = document.getElementById('status');
+    const generateBtn = document.getElementById('generateBtn');
+    const postBtn = document.getElementById('postBtn');
 
-            const keywords = document.getElementById("keywords").value;
-            const contentType = document.getElementById("content_type").value;
-            const tone = document.getElementById("tone").value;
-            const audience = document.getElementById("audience").value;
-            const wordCount = document.getElementById("word_count").value;
-            const seoKeywords = document.getElementById("seo_keywords").value;
-            const imagePrompt = document.getElementById("image_prompt").value;
+    let currentGenerated = null; // store current preview object
 
-            const resultPlaceholder = document.getElementById("result");
-            const errorPlaceholder = document.getElementById("error");
-            const featuredImage = document.getElementById("featuredImage");
+    async function callGenerate() {
+      statusEl.textContent = '';
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
 
-            // Reset UI
-            resultPlaceholder.textContent = "Generating content, please wait...";
-            errorPlaceholder.textContent = "";
+      const payload = {
+        keywords: document.getElementById('keywords').value,
+        contentType: document.getElementById('contentType').value,
+        tone: document.getElementById('tone').value,
+        audience: document.getElementById('audience').value,
+        wordCount: document.getElementById('wordCount').value,
+        imagePrompt: document.getElementById('imagePrompt').value
+      };
 
-            if (!openAIKey || !wordpressToken) {
-                alert("API keys not loaded. Please refresh the page.");
-                return;
-            }
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-            try {
-                // Step 1: Generate Content via OpenAI
-                console.log("Step 1: Generating content...");
-                const prompt = Write a ${tone} ${contentType.replace("_", " ")} targeting ${audience} with the following keywords: ${keywords}. SEO Keywords: ${seoKeywords}. Word Count: ${wordCount}.;
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || JSON.stringify(data));
 
-                const contentResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: Bearer ${openAIKey},
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-3.5-turbo",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 1000,
-                    }),
-                });
+        // data: { title, seo, excerpt, tags:[], html, imageBase64 (optional) }
+        currentGenerated = data;
+        renderPreview(data);
+        postBtn.disabled = false;
 
-                if (!contentResponse.ok) {
-                    const errorText = await contentResponse.text();
-                    throw new Error("Failed to generate content: " + errorText);
-                }
+      } catch (err) {
+        statusEl.textContent = 'Error: ' + (err.message || err);
+        currentGenerated = null;
+        postBtn.disabled = true;
+        document.getElementById('previewArea').style.display = 'none';
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = 'Generate & Preview';
+      }
+    }
 
-                const contentData = await contentResponse.json();
-                const generatedContent = contentData.choices?.[0]?.message?.content;
+    function renderPreview(obj) {
+      document.getElementById('previewArea').style.display = '';
+      document.getElementById('previewTitle').textContent = obj.title || '—';
+      document.getElementById('previewSeo').textContent = obj.seo || '—';
+      document.getElementById('previewExcerpt').textContent = obj.excerpt || '—';
+      document.getElementById('previewTags').textContent = (obj.tags || []).join(', ');
+      document.getElementById('articleHtml').innerHTML = obj.html || '';
+      const imgCont = document.getElementById('imageContainer');
+      imgCont.innerHTML = '';
+      if (obj.imageBase64) {
+        const img = document.createElement('img');
+        img.src = 'data:image/png;base64,' + obj.imageBase64;
+        img.alt = 'Generated image';
+        imgCont.appendChild(img);
+      }
+    }
 
-                if (!generatedContent) {
-                    throw new Error("No content received from OpenAI API.");
-                }
+    async function callPost() {
+      if (!currentGenerated) { statusEl.textContent = 'Nothing generated to post.'; return; }
+      postBtn.disabled = true;
+      postBtn.textContent = 'Posting...';
+      statusEl.textContent = '';
 
-                console.log("Generated Content:", generatedContent);
+      // Build auth for WP
+      const wpSite = document.getElementById('wpSite').value;
+      const method = document.getElementById('wpAuthMethod').value;
+      const body = {
+        site: wpSite,
+        title: currentGenerated.title,
+        content: currentGenerated.html,
+        excerpt: currentGenerated.excerpt,
+        tags: currentGenerated.tags,
+        imageBase64: currentGenerated.imageBase64 // optional
+      };
 
-                // Step 2: Post Content to WordPress
-                console.log("Step 2: Posting content to WordPress...");
-                const postResponse = await fetch("/api/posts", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title: Generated Content: ${keywords},
-                        content: generatedContent,
-                        status: "publish",
-                        wordpressToken,
-                        imagePrompt,
-                        openAIKey,
-                    }),
-                });
+      if (method === 'app') {
+        body.authMethod = 'app';
+        body.wpUser = document.getElementById('wpUser').value;
+        body.wpAppPass = document.getElementById('wpAppPass').value;
+      } else {
+        body.authMethod = 'jwt';
+        body.wpJwt = document.getElementById('wpJwt').value;
+      }
 
-                if (!postResponse.ok) {
-                    const errorText = await postResponse.text();
-                    throw new Error("Failed to post content to WordPress: " + errorText);
-                }
+      try {
+        const res = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || JSON.stringify(data));
+        // success
+        statusEl.style.color = 'green';
+        statusEl.textContent = 'Posted: ' + data.link;
+        // optionally open the link
+        window.open(data.link, '_blank');
+      } catch (err) {
+        statusEl.style.color = '#b00020';
+        statusEl.textContent = 'Post error: ' + (err.message || err);
+      } finally {
+        postBtn.disabled = false;
+        postBtn.textContent = 'Post to WordPress';
+      }
+    }
 
-                const { link } = await postResponse.json();
-                alert(Content posted successfully! View it here: ${link});
-            } catch (error) {
-                console.error("Error:", error);
-                errorPlaceholder.textContent = "Error: " + error.message;
-            }
-        }
-    </script>
+    generateBtn.addEventListener('click', callGenerate);
+    postBtn.addEventListener('click', callPost);
+  </script>
 </body>
 </html>
